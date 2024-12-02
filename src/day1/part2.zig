@@ -29,8 +29,6 @@ pub fn main(allocator: std.mem.Allocator, input_file: []const u8) !void {
         }
     }
 
-    std.mem.sort(u64, left_list.items, {}, std.sort.asc(u64));
-
     var sum: u64 = 0;
     for (left_list.items) |left| {
         const count = right_counts.get(left) orelse 0;
