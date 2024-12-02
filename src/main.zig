@@ -1,6 +1,8 @@
 const std = @import("std");
 const d1p1 = @import("day1/part1.zig");
 const d1p2 = @import("day1/part2.zig");
+const d2p1 = @import("day2/part1.zig");
+const d2p2 = @import("day2/part2.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -24,12 +26,16 @@ pub fn main() !void {
     switch (case.?) {
         .d1p1 => try d1p1.main(allocator, input_file),
         .d1p2 => try d1p2.main(allocator, input_file),
+        .d2p1 => try d2p1.main(allocator, input_file),
+        .d2p2 => try d2p2.main(allocator, input_file),
     }
 }
 
 const Case = enum {
     d1p1,
     d1p2,
+    d2p1,
+    d2p2,
 };
 
 test "simple test" {
