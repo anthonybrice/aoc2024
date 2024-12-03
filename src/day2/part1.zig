@@ -13,7 +13,6 @@ pub fn main(allocator: std.mem.Allocator, input_file: []const u8) !void {
     while (reports.next()) |line| {
         var tokens = std.mem.tokenizeScalar(u8, line, ' ');
         var levels = std.ArrayList(u64).init(allocator);
-        // defer levels.deinit();
 
         while (tokens.next()) |token| {
             const level = try std.fmt.parseInt(u64, token, 10);
