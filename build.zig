@@ -36,6 +36,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.linkLibC();
+    const mvzr = b.dependency("mvzr", .{});
+    exe.root_module.addImport("mvzr", mvzr.module("mvzr"));
+    const clap = b.dependency("clap", .{});
+    exe.root_module.addImport("clap", clap.module("clap"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

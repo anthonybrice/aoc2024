@@ -1,4 +1,5 @@
 const std = @import("std");
+const clap = @import("clap");
 const d1p1 = @import("day1/part1.zig");
 const d1p2 = @import("day1/part2.zig");
 const d2p1 = @import("day2/part1.zig");

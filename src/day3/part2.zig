@@ -1,6 +1,6 @@
 const std = @import("std");
 const util = @import("../main.zig");
-const mvzr = @import("../mvzr.zig");
+const mvzr = @import("mvzr");
 
 pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     const file_contents = try util.readFile(allocator, path);
