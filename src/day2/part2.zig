@@ -1,11 +1,9 @@
 const std = @import("std");
 const d2p1 = @import("part1.zig");
+const util = @import("../main.zig");
 
-pub fn main(allocator: std.mem.Allocator, input_file: []const u8) !void {
-    var in = try std.fs.cwd().openFile(input_file, .{ .mode = .read_only });
-    defer in.close();
-
-    const file_contents = try in.readToEndAlloc(allocator, std.math.maxInt(usize));
+pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
+    const file_contents = try util.readFile(allocator, path);
     defer allocator.free(file_contents);
 
     var reports = std.mem.tokenizeSequence(u8, file_contents, "\n");
