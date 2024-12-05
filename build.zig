@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("mvzr", mvzr.module("mvzr"));
     const clap = b.dependency("clap", .{});
     exe.root_module.addImport("clap", clap.module("clap"));
+    const ziglangSet = b.dependency("ziglangSet", .{});
+    exe.root_module.addImport("ziglangSet", ziglangSet.module("ziglangSet"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

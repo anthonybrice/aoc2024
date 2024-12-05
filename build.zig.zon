@@ -31,6 +31,10 @@
             .url = "https://github.com/Hejsil/zig-clap/archive/refs/tags/0.9.1.tar.gz",
             .hash = "122062d301a203d003547b414237229b09a7980095061697349f8bef41be9c30266b",
         },
+        .ziglangSet = .{
+            .url = "https://github.com/deckarep/ziglang-set/archive/845a2be.tar.gz",
+            .hash = "1220e30d1494cccc9f6c327ed7eb41b3b20b1b3e2cc900f2dce0e901193e30fc6442",
+        },
     },
     .paths = .{
         "build.zig",
