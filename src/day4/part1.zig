@@ -40,14 +40,11 @@ fn searchForXmas(array: [][]const u8, row: usize, col: usize) u64 {
     var sum: u64 = 0;
     for (directions) |dir| {
         // search for M at dir
-        if (searchForChar(array, row, col, 'M', dir)) {
-            // search for A at dir
-            if (searchForChar(array, @as(usize, @intCast(row_as + dir[0])), @as(usize, @intCast(col_as + dir[1])), 'A', dir)) {
-                // search for S at dir
-                if (searchForChar(array, @as(usize, @intCast(row_as + dir[0] * 2)), @as(usize, @intCast(col_as + dir[1] * 2)), 'S', dir)) {
-                    sum += 1;
-                }
-            }
+        if (searchForChar(array, row, col, 'M', dir) and
+            searchForChar(array, @as(usize, @intCast(row_as + dir[0])), @as(usize, @intCast(col_as + dir[1])), 'A', dir) and
+            searchForChar(array, @as(usize, @intCast(row_as + dir[0] * 2)), @as(usize, @intCast(col_as + dir[1] * 2)), 'S', dir))
+        {
+            sum += 1;
         }
     }
 
