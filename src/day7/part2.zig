@@ -12,7 +12,6 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         var tokens = std.mem.tokenizeAny(u8, line, ": ");
         const solution = try std.fmt.parseInt(u64, tokens.next().?, 10);
         var operands_list = std.ArrayList(u64).init(allocator);
-        // defer operands.deinit();
         while (tokens.next()) |token| {
             const operand = try std.fmt.parseInt(u64, token, 10);
             try operands_list.append(operand);

@@ -8,6 +8,8 @@ const d3p1 = @import("day3/part1.zig");
 const d3p2 = @import("day3/part2.zig");
 const d4p1 = @import("day4/part1.zig");
 const d4p2 = @import("day4/part2.zig");
+const d5p1 = @import("day5/part1.zig");
+const d5p2 = @import("day5/part2.zig");
 const d6p1 = @import("day6/part1.zig");
 const d6p2 = @import("day6/part2.zig");
 const d7p1 = @import("day7/part1.zig");
@@ -42,6 +44,8 @@ pub fn main() !void {
         .d3p2 => try d3p2.main(allocator, input_file),
         .d4p1 => try d4p1.main(allocator, input_file),
         .d4p2 => try d4p2.main(allocator, input_file),
+        .d5p1 => try d5p1.main(allocator, input_file),
+        .d5p2 => try d5p2.main(allocator, input_file),
         .d6p1 => try d6p1.main(allocator, input_file),
         .d6p2 => try d6p2.main(allocator, input_file),
         .d7p1 => try d7p1.main(allocator, input_file),
@@ -58,6 +62,8 @@ const Case = enum {
     d3p2,
     d4p1,
     d4p2,
+    d5p1,
+    d5p2,
     d6p1,
     d6p2,
     d7p1,
