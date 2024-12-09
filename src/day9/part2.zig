@@ -53,16 +53,14 @@ pub const Disk = struct {
                             break;
                         }
                     }
+                    if (free_idx > start) return;
                     self.blocks[free_idx] = Disk.Block{ .file = file };
                     self.blocks[start] = Disk.Block{ .free = {} };
                 },
                 .free => {},
             }
 
-            // check if compacted
-            if (self.isCompacted()) break;
-
-            if (start == 0) break;
+            if (start == 0) return;
             start -= 1;
         }
     }
