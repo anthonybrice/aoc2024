@@ -9,10 +9,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         allocator,
         std.mem.trimRight(u8, file_contents, "\n"),
     );
-    defer {
-        allocator.free(disk.blocks);
-        disk.file_map.deinit();
-    }
+    defer disk.deinit();
 
     try disk.defrag();
 
@@ -27,7 +24,8 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     std.debug.print("{d}\n", .{sum});
 }
 
-const Disk = struct {
+pub const Disk = struct {
+    allocator: std.mem.Allocator,
     blocks: []Block,
     file_map: std.AutoArrayHashMap(u64, File),
 
@@ -41,7 +39,50 @@ const Disk = struct {
         size: u64,
     };
 
-    fn defrag(self: *Disk) !void {
+    pub fn compact(self: *Disk) !void {
+        var start = self.blocks.len - 1;
+        while (start >= 0) {
+            const block = self.blocks[start];
+            switch (block) {
+                .file => |file| {
+                    // find index of first free block
+                    var free_idx: usize = undefined;
+                    for (0..self.blocks.len) |i| {
+                        if (self.blocks[i] == .free) {
+                            free_idx = i;
+                            break;
+                        }
+                    }
+                    self.blocks[free_idx] = Disk.Block{ .file = file };
+                    self.blocks[start] = Disk.Block{ .free = {} };
+                },
+                .free => {},
+            }
+
+            // check if compacted
+            if (self.isCompacted()) break;
+
+            if (start == 0) break;
+            start -= 1;
+        }
+    }
+
+    fn isCompacted(self: *Disk) bool {
+        var free_block_found = false;
+        for (0..self.blocks.len) |i| {
+            const block = self.blocks[i];
+            switch (block) {
+                .file => {
+                    if (free_block_found) return false;
+                },
+                .free => free_block_found = true,
+            }
+        }
+
+        return true;
+    }
+
+    pub fn defrag(self: *Disk) !void {
         var max_file_id: u64 = 0;
         for (self.file_map.keys()) |file_id| {
             if (file_id > max_file_id) max_file_id = file_id;
@@ -80,7 +121,7 @@ const Disk = struct {
         }
     }
 
-    fn initFromDenseMap(allocator: std.mem.Allocator, disk_map: []const u8) !Disk {
+    pub fn initFromDenseMap(allocator: std.mem.Allocator, disk_map: []const u8) !Disk {
         var blocks = std.ArrayList(Disk.Block).init(allocator);
         var file_map = std.AutoArrayHashMap(u64, File).init(allocator);
         var is_file = true;
@@ -103,10 +144,19 @@ const Disk = struct {
             is_file = !is_file;
         }
 
-        return Disk{ .blocks = try blocks.toOwnedSlice(), .file_map = file_map };
+        return Disk{
+            .blocks = try blocks.toOwnedSlice(),
+            .file_map = file_map,
+            .allocator = allocator,
+        };
     }
 
-    fn printBlocks(self: Disk) void {
+    pub fn deinit(self: *Disk) void {
+        self.allocator.free(self.blocks);
+        self.file_map.deinit();
+    }
+
+    pub fn printBlocks(self: Disk) void {
         for (0..self.block.len) |i| {
             const block = self.block[i];
             switch (block) {
