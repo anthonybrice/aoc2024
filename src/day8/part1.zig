@@ -5,8 +5,11 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     const file_contents = try util.readFile(allocator, path);
     defer allocator.free(file_contents);
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var antenna_map = std.AutoArrayHashMap(u8, std.ArrayList([2]usize)).init(allocator);
+    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
+    var antenna_map = std.AutoArrayHashMap(
+        u8,
+        std.ArrayList([2]usize),
+    ).init(allocator);
     defer {
         for (antenna_map.values()) |list| list.deinit();
         antenna_map.deinit();
@@ -38,17 +41,20 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
                         const curr_i64 = [2]i64{ @intCast(i), @intCast(j) };
                         const this_i64 = [2]i64{ @intCast(this[0]), @intCast(this[1]) };
                         const other_i64 = [2]i64{ @intCast(other[0]), @intCast(other[1]) };
-                        const d_this = calculateManhattanDistance(curr_i64, this_i64);
-                        const d_other = calculateManhattanDistance(curr_i64, other_i64);
+                        const d_this = manhattanDistance(curr_i64, this_i64);
+                        const d_other = manhattanDistance(curr_i64, other_i64);
                         if (areCollinear(
                             curr_i64,
                             this_i64,
                             other_i64,
                         ) and ((d_this == d_other * 2) or (2 * d_this == d_other))) {
-                            try antinodes.put([2]usize{ i, j }, {});
+                            try antinodes.put(.{ i, j }, {});
+                            break;
                         }
                     }
+                    if (antinodes.contains(.{ i, j })) break;
                 }
+                if (antinodes.contains(.{ i, j })) break;
             }
         }
     }
@@ -66,6 +72,6 @@ fn areCollinear(p1: [2]i64, p2: [2]i64, p3: [2]i64) bool {
     return (y2 - y1) * (x3 - x2) == (y3 - y2) * (x2 - x1);
 }
 
-fn calculateManhattanDistance(p1: [2]i64, p2: [2]i64) u64 {
+fn manhattanDistance(p1: [2]i64, p2: [2]i64) u64 {
     return @abs(p2[0] - p1[0]) + @abs(p2[1] - p1[1]);
 }

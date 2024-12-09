@@ -64,7 +64,7 @@ pub fn parseFile(allocator: std.mem.Allocator, file_contents: []const u8) !Secti
     };
 }
 
-pub const Sections = struct {
+const Sections = struct {
     pairs: []const [2]u64,
     sequences: []const []const u64,
 };

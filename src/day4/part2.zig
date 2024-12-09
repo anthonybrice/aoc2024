@@ -23,18 +23,17 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     var sum: u64 = 0;
     while (iter.next()) |entry| {
         const key = entry.key_ptr;
-        if (try isXmas(allocator, map, key[0], key[1])) sum += 1;
+        if (isXmas(map, key[0], key[1])) sum += 1;
     }
 
     std.debug.print("{d}\n", .{sum});
 }
 
 fn isXmas(
-    allocator: std.mem.Allocator,
-    map: std.AutoArrayHashMap([2]usize, u8),
+    map: anytype,
     row: usize,
     col: usize,
-) !bool {
+) bool {
     if (row == 0 or col == 0) return false;
     const a = map.get(.{ row, col }) orelse return false;
     if (a != 'A') return false;
@@ -44,17 +43,12 @@ fn isXmas(
     const below_left = map.get(.{ row + 1, col - 1 }) orelse return false;
     const below_right = map.get(.{ row + 1, col + 1 }) orelse return false;
 
-    const arr = try std.fmt.allocPrint(
-        allocator,
-        "{c}{c}{c}{c}",
-        .{ above_left, above_right, below_left, below_right },
-    );
-    defer allocator.free(arr);
+    const arr = .{ above_left, above_right, below_left, below_right };
 
-    if (std.mem.eql(u8, arr, "MMSS") or
-        std.mem.eql(u8, arr, "SSMM") or
-        std.mem.eql(u8, arr, "MSMS") or
-        std.mem.eql(u8, arr, "SMSM"))
+    if (std.mem.eql(u8, &arr, "MMSS") or
+        std.mem.eql(u8, &arr, "SSMM") or
+        std.mem.eql(u8, &arr, "MSMS") or
+        std.mem.eql(u8, &arr, "SMSM"))
     {
         return true;
     }
