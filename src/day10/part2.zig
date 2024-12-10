@@ -7,6 +7,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
 
     var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
     var height_map = std.AutoArrayHashMap([2]usize, u64).init(allocator);
+    defer height_map.deinit();
     var row: usize = 0;
     var line_len: usize = undefined;
     while (lines.next()) |line| {

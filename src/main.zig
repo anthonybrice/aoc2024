@@ -22,13 +22,13 @@ const d10p1 = @import("day10/part1.zig");
 const d10p2 = @import("day10/part2.zig");
 
 pub fn main() !void {
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // const allocator = gpa.allocator();
-    // defer {
-    //     const deinit_status = gpa.deinit();
-    //     if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
-    // }
-    const allocator = std.heap.c_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
+    }
+    // const allocator = std.heap.c_allocator;
     var args = try std.process.argsWithAllocator(allocator);
     defer args.deinit();
 
