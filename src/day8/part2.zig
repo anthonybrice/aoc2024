@@ -44,9 +44,12 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
                             other_i64,
                         )) {
                             try antinodes.put([2]usize{ i, j }, {});
+                            break;
                         }
                     }
+                    if (antinodes.contains(.{ i, j })) break;
                 }
+                if (antinodes.contains(.{ i, j })) break;
             }
         }
     }

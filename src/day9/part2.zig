@@ -53,14 +53,14 @@ pub const Disk = struct {
                             break;
                         }
                     }
-                    if (free_idx > start) return;
+                    if (free_idx > start) break;
                     self.blocks[free_idx] = Disk.Block{ .file = file };
                     self.blocks[start] = Disk.Block{ .free = {} };
                 },
                 .free => {},
             }
 
-            if (start == 0) return;
+            if (start == 0) break;
             start -= 1;
         }
     }
