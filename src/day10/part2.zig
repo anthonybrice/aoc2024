@@ -46,7 +46,6 @@ fn find_trail(
     var stack = std.ArrayList([2]usize).init(allocator);
     defer stack.deinit();
     try stack.append(.{ i, j });
-    // std.debug.print("start: {d}, {d}\n", .{ i, j });
 
     var nines: u64 = 0;
     while (stack.items.len > 0) {
@@ -55,6 +54,7 @@ fn find_trail(
 
         if (current_value == 9) {
             nines += 1;
+            continue;
         }
 
         for (directions) |dir| {
@@ -69,6 +69,5 @@ fn find_trail(
         }
     }
 
-    // std.debug.print("nines: {d}\n", .{nines});
     return nines;
 }

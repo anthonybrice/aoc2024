@@ -22,7 +22,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     for (0..row) |i| {
         for (0..line_len) |j| {
             if (height_map.get(.{ i, j }) == 0) {
-                sum += try find_trail(allocator, height_map, i, j);
+                sum += try findTrail(allocator, height_map, i, j);
             }
         }
     }
@@ -37,7 +37,7 @@ const directions = [_][2]i64{
     .{ 0, 1 }, // right
 };
 
-fn find_trail(
+fn findTrail(
     allocator: std.mem.Allocator,
     height_map: anytype,
     i: usize,
@@ -46,7 +46,6 @@ fn find_trail(
     var stack = std.ArrayList([2]usize).init(allocator);
     defer stack.deinit();
     try stack.append(.{ i, j });
-    // std.debug.print("start: {d}, {d}\n", .{ i, j });
 
     var nines = std.AutoArrayHashMap([2]usize, void).init(allocator);
     defer nines.deinit();
@@ -56,6 +55,7 @@ fn find_trail(
 
         if (current_value == 9) {
             try nines.put(pos, {});
+            continue;
         }
 
         for (directions) |dir| {
@@ -70,6 +70,5 @@ fn find_trail(
         }
     }
 
-    // std.debug.print("nines: {d}\n", .{nines});
     return nines.keys().len;
 }
