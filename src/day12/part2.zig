@@ -85,7 +85,10 @@ fn floodFill(
             const new_col = pos[1] + dir[1];
             const new_pos = [2]i64{ new_row, new_col };
 
-            if (garden.contains(new_pos) and garden.get(new_pos) == letter and !visited.contains(new_pos)) {
+            if (garden.contains(new_pos) and
+                garden.get(new_pos) == letter and
+                !visited.contains(new_pos))
+            {
                 try stack.append(new_pos);
             }
         }

@@ -52,9 +52,9 @@ const ClawMachine = struct {
     fn parsePrize(in: []const u8) ![2]u64 {
         var tokens = std.mem.tokenizeAny(u8, in, "=,");
         _ = tokens.next();
-        const x = try std.fmt.parseInt(u64, tokens.next().?, 10);
+        const x = try std.fmt.parseInt(u64, tokens.next().?, 10) + 10_000_000_000_000;
         _ = tokens.next();
-        const y = try std.fmt.parseInt(u64, tokens.next().?, 10);
+        const y = try std.fmt.parseInt(u64, tokens.next().?, 10) + 10_000_000_000_000;
 
         return .{ x, y };
     }
