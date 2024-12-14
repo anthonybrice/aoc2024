@@ -24,16 +24,16 @@
     // internet connectivity.
     .dependencies = .{
         .mvzr = .{
-            .url = "https://github.com/mnemnion/mvzr/archive/refs/tags/v0.3.1.tar.gz",
-            .hash = "1220b15a8c90d7b5af5d12781e45336147cd09e06028b9ecd7461f15970d8670a0ae",
+            .url = "https://github.com/mnemnion/mvzr/archive/refs/tags/v0.3.2.tar.gz",
+            .hash = "122084c73b4208fdfb02ee2c839e8e204d4b1d93421fecbf1463df96bb4e8a776491",
         },
         .clap = .{
-            .url = "https://github.com/Hejsil/zig-clap/archive/refs/tags/0.9.1.tar.gz",
-            .hash = "122062d301a203d003547b414237229b09a7980095061697349f8bef41be9c30266b",
+            .url = "git+https://github.com/Hejsil/zig-clap#560c8dd72ab25d556123846254040c5bf9ad3ba4",
+            .hash = "12200abadc141099ff2ba5098f7eca9bf84d548dd92ec5827ef323d813d59b049780",
         },
-        .ziglangSet = .{
-            .url = "https://github.com/deckarep/ziglang-set/archive/845a2be.tar.gz",
-            .hash = "1220e30d1494cccc9f6c327ed7eb41b3b20b1b3e2cc900f2dce0e901193e30fc6442",
+        .zm = .{
+            .url = "git+https://github.com/griush/zm#dbb86079993637e3b0ab12323e08461ea6325ca6",
+            .hash = "1220897b0db58d1867fef1672a72f886f27af6a22e561797c48c9f793b06961c60ab",
         },
     },
     .paths = .{

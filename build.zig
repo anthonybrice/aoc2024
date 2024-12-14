@@ -35,14 +35,14 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    exe.linkLibC();
     const mvzr = b.dependency("mvzr", .{});
     exe.root_module.addImport("mvzr", mvzr.module("mvzr"));
     const clap = b.dependency("clap", .{});
     exe.root_module.addImport("clap", clap.module("clap"));
-    const ziglangSet = b.dependency("ziglangSet", .{});
-    exe.root_module.addImport("ziglangSet", ziglangSet.module("ziglangSet"));
+    const zm = b.dependency("zm", .{});
+    exe.root_module.addImport("zm", zm.module("zm"));
 
+    exe.linkLibC();
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
