@@ -18,7 +18,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
             robot.move();
         }
         seconds += 1;
-        if (try checkXmasTree(allocator, robots)) {
+        if (try checkXmasTree(robots)) {
             break;
         }
     }
@@ -26,14 +26,15 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
     std.debug.print("{d}\n", .{seconds});
 }
 
-fn checkXmasTree(allocator: std.mem.Allocator, robots: std.ArrayList(Robot)) !bool {
-    var map = std.AutoArrayHashMap(@Vector(2, i64), void).init(allocator);
-    defer map.deinit();
-    for (robots.items) |robot| {
-        if (map.contains(robot.pos)) {
+fn checkXmasTree(robots: std.ArrayList(Robot)) !bool {
+    var map: [101][103]u8 = .{.{'.'} ** 103} ** 101;
+    for (robots.items) |r| {
+        const u_pos_x: usize = @intCast(r.pos[0]);
+        const u_pos_y: usize = @intCast(r.pos[1]);
+        if (map[u_pos_x][u_pos_y] != '.') {
             return false;
         } else {
-            try map.put(robot.pos, {});
+            map[u_pos_x][u_pos_y] = '1';
         }
     }
 
