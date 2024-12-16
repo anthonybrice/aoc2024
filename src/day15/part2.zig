@@ -22,18 +22,17 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
 
     var pos: Vec2 = try getRobot(warehouse);
 
-    for (warehouse) |line| {
-        std.debug.print("{s}\n", .{line});
-    }
-    std.debug.print("\n", .{});
+    // for (warehouse) |line| {
+    //     std.debug.print("{s}\n", .{line});
+    // }
+    // std.debug.print("\n", .{});
 
-    for (moves, 1..) |move, i| {
-        std.debug.print("Move {d}: {c}\n", .{ i, move });
+    for (moves) |move| {
         pos = doMove(warehouse, pos, getDirection(move));
-        for (warehouse) |line| {
-            std.debug.print("{s}\n", .{line});
-        }
-        std.debug.print("\n", .{});
+        // for (warehouse) |line| {
+        //     std.debug.print("{s}\n", .{line});
+        // }
+        // std.debug.print("\n", .{});
     }
 
     var sum: usize = 0;
@@ -94,7 +93,6 @@ fn doMove(warehouse: [][]u8, pos: Vec2, dir: Vec2) Vec2 {
     var new_pos = pos;
 
     if (!isCollision(warehouse, pos, dir)) {
-        std.debug.print("No collision detected\n", .{});
         new_pos = pos + dir;
         const x: usize = @intCast(new_pos[0]);
         const y: usize = @intCast(new_pos[1]);
