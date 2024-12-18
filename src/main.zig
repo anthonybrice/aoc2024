@@ -34,20 +34,22 @@ const d16p1 = @import("day16/part1.zig");
 const d16p2 = @import("day16/part2.zig");
 const d17p1 = @import("day17/part1.zig");
 const d17p2 = @import("day17/part2.zig");
+const d18p1 = @import("day18/part1.zig");
+const d18p2 = @import("day18/part2.zig");
 
 pub fn main() !void {
     // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     // const allocator = arena.allocator();
     // defer arena.deinit();
 
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // const allocator = gpa.allocator();
-    // defer {
-    //     const deinit_status = gpa.deinit();
-    //     if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
-    // }
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
+    }
 
-    const allocator = std.heap.c_allocator;
+    // const allocator = std.heap.c_allocator;
     var args = try std.process.argsWithAllocator(allocator);
     defer args.deinit();
 
@@ -95,6 +97,8 @@ pub fn main() !void {
         .d16p2 => try d16p2.main(allocator, input_file),
         .d17p1 => try d17p1.main(allocator, input_file),
         .d17p2 => try d17p2.main(allocator, input_file),
+        .d18p1 => try d18p1.main(allocator, input_file),
+        .d18p2 => try d18p2.main(allocator, input_file),
     }
 }
 
@@ -133,6 +137,8 @@ const Case = enum {
     d16p2,
     d17p1,
     d17p2,
+    d18p1,
+    d18p2,
 };
 
 test "simple test" {
