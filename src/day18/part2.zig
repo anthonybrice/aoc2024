@@ -12,10 +12,8 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
     defer memory.deinit();
 
     for (0..71) |i| {
-        const ip: i64 = @intCast(i);
         for (0..71) |j| {
-            const jp: i64 = @intCast(j);
-            try memory.put(Vec2{ ip, jp }, '.');
+            try memory.put(Vec2{ @intCast(i), @intCast(j) }, '.');
         }
     }
 
@@ -27,14 +25,12 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
         try memory.put(Vec2{ x, y }, '#');
     }
 
-    var x: i64 = undefined;
-    var y: i64 = undefined;
     var start: usize = 1024;
     while (true) {
         const line = lines.next().?;
         var tokens = std.mem.tokenizeScalar(u8, line, ',');
-        y = try std.fmt.parseInt(i64, tokens.next().?, 10);
-        x = try std.fmt.parseInt(i64, tokens.next().?, 10);
+        const y = try std.fmt.parseInt(i64, tokens.next().?, 10);
+        const x = try std.fmt.parseInt(i64, tokens.next().?, 10);
         try memory.put(Vec2{ x, y }, '#');
 
         const path = aStar(
@@ -109,7 +105,10 @@ pub fn aStar(allocator: std.mem.Allocator, maze: std.AutoArrayHashMap(Vec2, u8),
             if (tentative_g_score < (g_score.get(neighbor) orelse std.math.maxInt(i64))) {
                 try came_from.put(neighbor, current.pos);
                 try g_score.put(neighbor, tentative_g_score);
-                try open_set.add(.{ .pos = neighbor, .f_score = tentative_g_score + heuristic(neighbor, goal) });
+                try open_set.add(.{
+                    .pos = neighbor,
+                    .f_score = tentative_g_score + heuristic(neighbor, goal),
+                });
             }
         }
     }
