@@ -44,6 +44,8 @@ const d21p1 = @import("day21/part1.zig");
 const d21p2 = @import("day21/part2.zig");
 const d22p1 = @import("day22/part1.zig");
 const d22p2 = @import("day22/part2.zig");
+const d23p1 = @import("day23/part1.zig");
+const d23p2 = @import("day23/part2.zig");
 
 pub fn main() !void {
     // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -115,6 +117,8 @@ pub fn main() !void {
         .d21p2 => try d21p2.main(allocator, input_file),
         .d22p1 => try d22p1.main(allocator, input_file),
         .d22p2 => try d22p2.main(allocator, input_file),
+        .d23p1 => try d23p1.main(allocator, input_file),
+        .d23p2 => try d23p2.main(allocator, input_file),
     }
 }
 
@@ -163,6 +167,8 @@ const Case = enum {
     d21p2,
     d22p1,
     d22p2,
+    d23p1,
+    d23p2,
 };
 
 test "simple test" {
