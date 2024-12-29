@@ -65,33 +65,29 @@ const Gate = struct {
 pub const Device = struct {
     allocator: std.mem.Allocator,
     wires: std.StringArrayHashMap(?u8),
-    out_wires: std.StringArrayHashMap(void),
     gates: []Gate,
 
     pub fn init(allocator: std.mem.Allocator, in: []const u8) !Device {
         var sections = std.mem.tokenizeSequence(u8, in, "\n\n");
         var wires = try parseInputWires(allocator, sections.next().?);
 
-        var out_wires = std.StringArrayHashMap(void).init(allocator);
         var gates = std.ArrayList(Gate).init(allocator);
         defer gates.deinit();
         var gate_lines = std.mem.tokenizeScalar(u8, sections.next().?, '\n');
         while (gate_lines.next()) |line| {
-            const gate = try parseGate(&wires, &out_wires, line);
+            const gate = try parseGate(&wires, line);
             try gates.append(gate);
         }
 
         return .{
             .allocator = allocator,
             .wires = wires,
-            .out_wires = out_wires,
             .gates = try gates.toOwnedSlice(),
         };
     }
 
     pub fn deinit(self: *Device) void {
         self.wires.deinit();
-        self.out_wires.deinit();
         self.allocator.free(self.gates);
     }
 
@@ -145,7 +141,6 @@ pub const Device = struct {
 
     fn parseGate(
         wires: *std.StringArrayHashMap(?u8),
-        out_wires: *std.StringArrayHashMap(void),
         line: []const u8,
     ) !Gate {
         var tokens = std.mem.tokenizeAny(u8, line, " ->");
@@ -157,7 +152,6 @@ pub const Device = struct {
         if (!wires.contains(in1)) try wires.put(in1, null);
         if (!wires.contains(in2)) try wires.put(in2, null);
         if (!wires.contains(out)) try wires.put(out, null);
-        try out_wires.put(out, {});
 
         const ch1 = in1[0];
         const ch2 = in2[0];
@@ -246,14 +240,12 @@ pub const Device = struct {
 
     pub fn clone(self: Device) !Device {
         const wires = try self.wires.clone();
-        const out_wires = try self.out_wires.clone();
         const gates = try self.allocator.alloc(Gate, self.gates.len);
         @memcpy(gates, self.gates);
 
         return .{
             .allocator = self.allocator,
             .wires = wires,
-            .out_wires = out_wires,
             .gates = gates,
         };
     }
@@ -283,8 +275,7 @@ pub const Device = struct {
             defer group.deinit();
 
             for (self.gates) |gate| {
-                const n_str = try self.twoDigitNumberString(gate_index);
-                defer self.allocator.free(n_str);
+                const n_str = try twoDigitNumberString(gate_index);
                 const x_key = [_]u8{ 'x', n_str[0], n_str[1] };
                 const y_key = [_]u8{ 'y', n_str[0], n_str[1] };
                 if (keyInGate(&x_key, gate) or keyInGate(&y_key, gate)) {
@@ -379,9 +370,8 @@ pub const Device = struct {
                 try correct_outputs.append(outputs_1_to_3.items[0]);
                 try correct_outputs.append(outputs_1_to_3.items[1]);
                 try correct_outputs.append(output_name_carry_out);
-                const y = try self.twoDigitNumberString(gate_index);
-                defer self.allocator.free(y);
-                const entry = self.wires.getEntry(&[_]u8{ 'z', y[0], y[1] }).?;
+                const z_num = try twoDigitNumberString(gate_index);
+                const entry = self.wires.getEntry(&[_]u8{ 'z', z_num[0], z_num[1] }).?;
                 try correct_outputs.append(entry.key_ptr.*);
             }
 
@@ -408,8 +398,8 @@ pub const Device = struct {
                         try diff.append(.{ s1[1], s2[1] });
                     }
                 }
-                try wrong_outputs.appendSlice(diff.items);
             }
+            try wrong_outputs.appendSlice(diff.items);
         }
 
         return try wrong_outputs.toOwnedSlice();
@@ -453,12 +443,15 @@ pub const Device = struct {
         group.items[index] = x;
     }
 
-    fn twoDigitNumberString(self: Device, n: u64) ![]const u8 {
+    fn twoDigitNumberString(n: u64) ![2]u8 {
+        var buf: [2]u8 = undefined;
         if (n < 10) {
-            return try std.fmt.allocPrint(self.allocator, "0{d}", .{n});
+            _ = try std.fmt.bufPrint(&buf, "0{d}", .{n});
         } else {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{n});
+            _ = try std.fmt.bufPrint(&buf, "{d}", .{n});
         }
+
+        return buf;
     }
 
     fn keyInGate(key: []const u8, gate: Gate) bool {
