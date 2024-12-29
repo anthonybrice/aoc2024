@@ -74,22 +74,6 @@ fn compareStrings(_: void, lhs: []const u8, rhs: []const u8) bool {
     return std.mem.order(u8, lhs, rhs).compare(std.math.CompareOperator.lt);
 }
 
-fn isFullyConnected(g: Graph, sg: Graph) bool {
-    var sg_iter = sg.values.keyIterator();
-    while (sg_iter.next()) |h| {
-        const node = sg.lookup(h.*).?;
-        var other_iter = sg.values.keyIterator();
-        while (other_iter.next()) |oh| {
-            const other = sg.lookup(oh.*).?;
-            const adj_map = g.adjIn.get(h.*).?;
-            if (!std.mem.eql(u8, node, other) and !adj_map.contains(oh.*))
-                return false;
-        }
-    }
-
-    return true;
-}
-
 fn bronKerbosch(allocator: std.mem.Allocator, g: Graph, vs: std.StringArrayHashMap(void)) !std.ArrayList(std.StringArrayHashMap(void)) {
     var acc = std.ArrayList(std.StringArrayHashMap(void)).init(allocator);
 
