@@ -33,6 +33,31 @@ pub fn shutdownPool() void {
     }
 }
 
+pub fn downloadFile(allocator: Allocator, url: []const u8, path: []const u8, cookie: ?[]const u8) !void {
+    std.debug.print("Trying to download {s} from {s}\n", .{ path, url });
+    var http_client = std.http.Client{ .allocator = allocator };
+    defer http_client.deinit();
+    var response = std.ArrayList(u8).init(allocator);
+    defer response.deinit();
+    const res = try http_client.fetch(.{
+        .location = .{ .url = url },
+        .method = .GET,
+        .response_storage = .{ .dynamic = &response },
+        .extra_headers = &[_]std.http.Header{.{
+            .name = "Cookie",
+            .value = cookie orelse "",
+        }},
+    });
+    if (res.status != .ok) {
+        std.debug.panic("Failed to fetch input file: {d}\n", .{res.status});
+        return error.FailedToFetchInputFile;
+    }
+    const dir = try std.fs.cwd().makeOpenPath(std.fs.path.dirname(path).?, .{});
+    const file = try dir.createFile(std.fs.path.basename(path), .{});
+    defer file.close();
+    try file.writeAll(response.items);
+}
+
 pub fn readFile(allocator: std.mem.Allocator, path: []const u8) ![]const u8 {
     var in = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
     defer in.close();
@@ -41,9 +66,24 @@ pub fn readFile(allocator: std.mem.Allocator, path: []const u8) ![]const u8 {
 }
 
 pub fn getInput(allocator: Allocator, day: []const u8) ![]const u8 {
-    const path = try std.fmt.allocPrint(allocator, "in/day{s}.txt", .{day});
-    defer allocator.free(path);
-    return try readFile(allocator, path);
+    const filename = try std.fmt.allocPrint(allocator, "in/day{s}.txt", .{day});
+    defer allocator.free(filename);
+    std.fs.cwd().access(filename, .{}) catch |err| {
+        if (err == error.FileNotFound) {
+            var buf = [_]u8{0} ** 1024;
+            const cookie = std.fs.cwd().readFile(".cookie", &buf) catch |e| {
+                std.debug.panic("Error reading .cookie: {any}\n", .{e});
+            };
+            const url = try std.fmt.allocPrint(
+                allocator,
+                "https://adventofcode.com/2024/day/{s}/input",
+                .{day},
+            );
+            defer allocator.free(url);
+            try downloadFile(allocator, url, filename, cookie);
+        }
+    };
+    return try readFile(allocator, filename);
 }
 
 pub fn runDay(work: Worker) !void {

@@ -1,7 +1,7 @@
 const std = @import("std");
 const util = @import("../main.zig");
-const graph = @import("../graph/graph.zig");
-const tarjan = @import("../graph/tarjan.zig");
+const graph = @import("graph.zig");
+const tarjan = @import("tarjan.zig");
 
 pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
     const file_contents = try util.readFile(allocator, filepath);

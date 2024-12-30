@@ -23,19 +23,24 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    // const lib = b.addStaticLibrary(.{
-    //     .name = "aoc2024",
-    //     // In this case the main source file is merely a path, however, in more
-    //     // complicated build scripts, this could be a generated file.
-    //     .root_source_file = b.path("src/root.zig"),
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
+    const clap = b.dependency("clap", .{});
+    const mvzr = b.dependency("mvzr", .{});
 
-    // // This declares intent for the library to be installed into the standard
-    // // location when the user invokes the "install" step (the default step when
-    // // running `zig build`).
-    // b.installArtifact(lib);
+    const lib = b.addStaticLibrary(.{
+        .name = "aoc2024",
+        // In this case the main source file is merely a path, however, in more
+        // complicated build scripts, this could be a generated file.
+        .root_source_file = b.path("src/runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    lib.root_module.addImport("mvzr", mvzr.module("mvzr"));
+    lib.root_module.addImport("clap", clap.module("clap"));
+
+    // This declares intent for the library to be installed into the standard
+    // location when the user invokes the "install" step (the default step when
+    // running `zig build`).
+    b.installArtifact(lib);
 
     // exe.linkLibC();
     // // This declares intent for the executable to be installed into the
@@ -49,11 +54,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const mvzr = b.dependency("mvzr", .{});
     runner.root_module.addImport("mvzr", mvzr.module("mvzr"));
-    const clap = b.dependency("clap", .{});
     runner.root_module.addImport("clap", clap.module("clap"));
-
     runner.linkLibC();
     b.installArtifact(runner);
 
