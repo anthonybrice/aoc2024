@@ -12,30 +12,29 @@ pub const Context: type = struct {
     pub fn deinit(self: *Context) void {
         self.allocator.free(self.keys);
         self.allocator.free(self.locks);
-        self.allocator.destroy(self);
     }
 };
 
-// pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-//     const file_contents = try util.readFile(allocator, filepath);
-//     defer allocator.free(file_contents);
+pub fn main2(allocator: std.mem.Allocator, filepath: []const u8) !void {
+    const file_contents = try util.readFile(allocator, filepath);
+    defer allocator.free(file_contents);
 
-//     const locks_and_keys = try parseLocksAndKeys(allocator, file_contents);
-//     const locks = locks_and_keys.locks;
-//     defer allocator.free(locks);
-//     const keys = locks_and_keys.keys;
-//     defer allocator.free(keys);
+    const locks_and_keys = try parseLocksAndKeys(allocator, file_contents);
+    const locks = locks_and_keys.locks;
+    defer allocator.free(locks);
+    const keys = locks_and_keys.keys;
+    defer allocator.free(keys);
 
-//     var sum: u64 = 0;
-//     for (locks) |lock| {
-//         for (keys) |key| {
-//             if (fit(lock, key)) {
-//                 sum += 1;
-//             }
-//         }
-//     }
-//     std.debug.print("{d}\n", .{sum});
-// }
+    var sum: u64 = 0;
+    for (locks) |lock| {
+        for (keys) |key| {
+            if (fit(lock, key)) {
+                sum += 1;
+            }
+        }
+    }
+    std.debug.print("{d}\n", .{sum});
+}
 
 pub fn parse(allocator: Allocator, in: []const u8) !*Context {
     var ctx = try allocator.create(Context);
@@ -151,7 +150,10 @@ pub fn main() !void {
     defer allocator.free(file_contents);
 
     const ctx = try parse(allocator, file_contents);
-    defer ctx.deinit();
+    defer {
+        ctx.deinit();
+        allocator.destroy(ctx);
+    }
     const r = try part1(ctx.*);
     defer allocator.free(r);
     std.debug.print("{s}\n", .{r});

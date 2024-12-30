@@ -103,7 +103,7 @@ pub fn main() !void {
 
     // const run_all = false;
     // var run_bench = false;
-    const day = days.len - 1;
+    const day = try std.fmt.parseInt(usize, args[1], 10);
     common.ensurePool(allocator);
 
     std.debug.print("\tparse\tpart1\tpart2\ttotal\n", .{});

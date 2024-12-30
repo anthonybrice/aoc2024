@@ -119,12 +119,12 @@ pub fn main() !void {
         .d21p1 => try d21p1.main(allocator, input_file),
         .d21p2 => try d21p2.main(allocator, input_file),
         .d22p1 => try d22p1.main(allocator, input_file),
-        .d22p2 => try d22p2.main(allocator, input_file),
+        .d22p2 => try d22p2.main2(allocator, input_file),
         .d23p1 => try d23p1.main(allocator, input_file),
         .d23p2 => try d23p2.main(allocator, input_file),
         .d24p1 => try d24p1.main(allocator, input_file),
         .d24p2 => try d24p2.main(allocator, input_file),
-        .d25p1 => try d25p1.main(allocator, input_file),
+        .d25p1 => try d25p1.main2(allocator, input_file),
     }
 }
 

@@ -1,41 +1,111 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const util = @import("../main.zig");
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub fn main2(_: std.mem.Allocator, _: []const u8) !void {
+    unreachable;
+}
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
+pub const Context = struct {
+    allocator: Allocator,
+    init_ns: []i64,
+
+    pub fn deinit(self: Context) void {
+        self.allocator.free(self.init_ns);
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
     var init_ns = std.ArrayList(i64).init(allocator);
     defer init_ns.deinit();
+    var lines = std.mem.tokenizeScalar(u8, in, '\n');
     while (lines.next()) |line| {
         const n = try std.fmt.parseInt(i64, line, 10);
         try init_ns.append(n);
     }
+    ctx.init_ns = try init_ns.toOwnedSlice();
+    ctx.allocator = allocator;
 
-    var prices = std.ArrayList([]i64).init(allocator);
-    defer {
-        for (prices.items) |l| {
-            allocator.free(l);
+    return ctx;
+}
+
+pub fn part1(_: Context) ![]const u8 {
+    return "Merry Christmas!";
+}
+
+pub fn part2(ctx: Context) ![]const u8 {
+    // a map of the total bananas for each 4-price-change sequence
+    var market = std.AutoArrayHashMap(i64, i64).init(ctx.allocator);
+    defer market.deinit();
+    // a map of 4-price-change sequences to each buyer's index
+    var buyers = std.AutoArrayHashMap(i64, usize).init(ctx.allocator);
+    defer buyers.deinit();
+
+    try makeMarket(ctx.allocator, ctx.init_ns, &market, &buyers);
+    var max_bananas: i64 = 0;
+    for (market.values()) |v| {
+        if (v > max_bananas) {
+            max_bananas = v;
         }
-        prices.deinit();
-    }
-    for (init_ns.items) |n| {
-        var curr = n;
-        var l = std.ArrayList(i64).init(allocator);
-        defer l.deinit();
-        try l.append(@mod(curr, 10));
-        for (0..2000) |_| {
-            curr = nextSecretNumber(curr);
-            try l.append(@mod(curr, 10));
-        }
-        try prices.append(try l.toOwnedSlice());
     }
 
-    const max = maxBananas(prices.items);
-    std.debug.print("{d}\n", .{max});
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{max_bananas});
+}
+
+fn makeMarket(
+    allocator: Allocator,
+    init_ns: []i64,
+    market: *std.AutoArrayHashMap(i64, i64),
+    buyers: *std.AutoArrayHashMap(i64, usize),
+) !void {
+    for (init_ns, 0..) |n, i| {
+        try addBuyerPrices(allocator, i, n, buyers, market);
+    }
+}
+
+fn addBuyerPrices(
+    allocator: Allocator,
+    buyer: usize,
+    n: i64,
+    buyers: *std.AutoArrayHashMap(i64, usize),
+    market: *std.AutoArrayHashMap(i64, i64),
+) !void {
+    var last_price = @mod(n, 10);
+    var changes = std.ArrayList(i64).init(allocator);
+    defer changes.deinit();
+
+    var curr = n;
+    for (0..2000) |_| {
+        curr = nextSecretNumber(curr);
+        const price = @mod(curr, 10);
+        const change = price - last_price;
+        last_price = price;
+        try changes.append(change);
+        if (changes.items.len < 4) {
+            continue;
+        } else if (changes.items.len > 4) {
+            _ = changes.orderedRemove(0);
+        }
+
+        const index = getIndex(
+            changes.items[0],
+            changes.items[1],
+            changes.items[2],
+            changes.items[3],
+        );
+        if (buyers.get(index) == buyer) continue;
+
+        try buyers.put(index, buyer);
+        const total = market.get(index) orelse 0;
+        try market.put(index, total + price);
+    }
+}
+
+fn getIndex(a: i64, b: i64, c: i64, d: i64) i64 {
+    return (19 * 19 * 19 * (a + 9)) + (19 * 19 * (b + 9)) + (19 * (c + 9)) + (d + 9);
 }
 
 fn nextSecretNumber(n: i64) i64 {
@@ -52,47 +122,24 @@ fn nextSecretNumber(n: i64) i64 {
     return n9;
 }
 
-fn getPriceFromSeq(ns: []i64, seq: [4]i64) ?i64 {
-    for (ns[4..], 4..) |n, i| {
-        const c1 = ns[i - 3] - ns[i - 4];
-        const c2 = ns[i - 2] - ns[i - 3];
-        const c3 = ns[i - 1] - ns[i - 2];
-        const c4 = n - ns[i - 1];
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+    const path = "in/day22.txt";
 
-        if (c1 == seq[0] and c2 == seq[1] and c3 == seq[2] and c4 == seq[3]) {
-            return n;
-        }
+    var in = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
+    defer in.close();
+
+    const file_contents = try in.readToEndAlloc(allocator, std.math.maxInt(usize));
+    defer allocator.free(file_contents);
+
+    const ctx = try parse(allocator, file_contents);
+    defer {
+        ctx.deinit();
+        allocator.destroy(ctx);
     }
-
-    return null;
-}
-
-fn maxBananas(prices: [][]i64) i64 {
-    var curr_max: i64 = 0;
-
-    var c1: i64 = -9;
-    while (c1 <= 9) {
-        var c2: i64 = -9;
-        while (c2 <= 9) {
-            var c3: i64 = -9;
-            while (c3 <= 9) {
-                var c4: i64 = -9;
-                while (c4 <= 9) {
-                    var curr: i64 = 0;
-                    for (prices) |l| {
-                        curr += getPriceFromSeq(l, .{ c1, c2, c3, c4 }) orelse continue;
-                        if (curr > curr_max) {
-                            curr_max = curr;
-                        }
-                    }
-                    c4 += 1;
-                }
-                c3 += 1;
-            }
-            c2 += 1;
-        }
-        c1 += 1;
-    }
-
-    return curr_max;
+    const r = try part2(ctx.*);
+    defer allocator.free(r);
+    std.debug.print("{s}\n", .{r});
 }
