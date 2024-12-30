@@ -261,7 +261,6 @@ pub const Device = struct {
         var wrong_outputs = std.ArrayList([2][]const u8).init(self.allocator);
         defer wrong_outputs.deinit();
 
-        // count the number of x/y/z bits
         var x_bits: u64 = 0;
         for (self.wires.keys()) |key| {
             if (key[0] == 'x') x_bits += 1;

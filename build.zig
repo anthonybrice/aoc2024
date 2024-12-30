@@ -1,9 +1,17 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
+    }
+    generateDaysFile(allocator, "./src") catch {};
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -15,19 +23,39 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "aoc2024",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/root.zig"),
+    // const lib = b.addStaticLibrary(.{
+    //     .name = "aoc2024",
+    //     // In this case the main source file is merely a path, however, in more
+    //     // complicated build scripts, this could be a generated file.
+    //     .root_source_file = b.path("src/root.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+
+    // // This declares intent for the library to be installed into the standard
+    // // location when the user invokes the "install" step (the default step when
+    // // running `zig build`).
+    // b.installArtifact(lib);
+
+    // exe.linkLibC();
+    // // This declares intent for the executable to be installed into the
+    // // standard location when the user invokes the "install" step (the default
+    // // step when running `zig build`).
+    // b.installArtifact(exe);
+
+    const runner = b.addExecutable(.{
+        .name = "aocRunner",
+        .root_source_file = b.path("src/runner.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const mvzr = b.dependency("mvzr", .{});
+    runner.root_module.addImport("mvzr", mvzr.module("mvzr"));
+    const clap = b.dependency("clap", .{});
+    runner.root_module.addImport("clap", clap.module("clap"));
 
-    // This declares intent for the library to be installed into the standard
-    // location when the user invokes the "install" step (the default step when
-    // running `zig build`).
-    b.installArtifact(lib);
+    runner.linkLibC();
+    b.installArtifact(runner);
 
     const exe = b.addExecutable(.{
         .name = "aoc2024",
@@ -35,23 +63,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const mvzr = b.dependency("mvzr", .{});
     exe.root_module.addImport("mvzr", mvzr.module("mvzr"));
-    const clap = b.dependency("clap", .{});
     exe.root_module.addImport("clap", clap.module("clap"));
-    const zm = b.dependency("zm", .{});
-    exe.root_module.addImport("zm", zm.module("zm"));
-
     exe.linkLibC();
-    // This declares intent for the executable to be installed into the
-    // standard location when the user invokes the "install" step (the default
-    // step when running `zig build`).
     b.installArtifact(exe);
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
     // such a dependency.
-    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd = b.addRunArtifact(runner);
 
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.
@@ -95,4 +115,56 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
+}
+
+fn generateDaysFile(allocator: Allocator, dir: []const u8) !void {
+    var d = try std.fs.cwd().openDir(dir, .{});
+    const filename = "_days.zig";
+    d.deleteFile(filename) catch {};
+    const file = try d.createFile(filename, .{});
+    defer file.close();
+    try file.writeAll("pub const common = @import(\"common.zig\");\n");
+
+    // var day_list = std.ArrayList(struct { []const u8, usize }).init(allocator);
+    var day_list = std.AutoArrayHashMap(usize, []const u8).init(allocator);
+    defer {
+        for (day_list.values()) |v| allocator.free(v);
+        day_list.deinit();
+    }
+
+    for (1..26) |i| {
+        const day_filename = try std.fmt.allocPrint(
+            allocator,
+            "day{d}/day.zig",
+            .{i},
+        );
+        defer allocator.free(day_filename);
+
+        _ = d.statFile(day_filename) catch continue;
+
+        const id = try std.fmt.allocPrint(allocator, "day{d}", .{i});
+        try file.writer().print(
+            "pub const {s} = @import(\"{s}\");\n",
+            .{ id, day_filename },
+        );
+
+        // try day_list.append(.{ id, i });
+        try day_list.put(i, id);
+    }
+
+    try file.writeAll("\n");
+
+    for (day_list.keys()) |k| {
+        const str = day_list.get(k).?;
+        try file.writer().print(
+            "pub const {s}_work = common.Worker{{ .day = \"{d}\", .parse = @ptrCast(&{s}.parse), .part1 = @ptrCast(&{s}.part1), .part2 = @ptrCast(&{s}.part2), }};\n",
+            .{ str, k, str, str, str },
+        );
+    }
+
+    try file.writeAll("pub const days = [_]common.Worker{ ");
+    for (day_list.values()) |v| {
+        try file.writer().print("{s}_work, ", .{v});
+    }
+    try file.writeAll("};\n");
 }
