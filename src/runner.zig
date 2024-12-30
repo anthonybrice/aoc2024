@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const common = @import("common.zig");
-const days = @import("_days.zig").days;
+const days = @import("_days.zig");
 
 fn printTime_(t: u64, fmax: comptime_int) void {
     const units = [_][]const u8{ "ns", "µs", "ms", "s" };
@@ -103,11 +103,15 @@ pub fn main() !void {
 
     // const run_all = false;
     // var run_bench = false;
-    const day = try std.fmt.parseInt(usize, args[1], 10);
+    const day_str = args[1];
+    const day = std.meta.stringToEnum(days.Day, day_str) orelse {
+        std.debug.print("Invalid day\n", .{});
+        return;
+    };
     common.ensurePool(allocator);
 
     std.debug.print("\tparse\tpart1\tpart2\ttotal\n", .{});
 
-    _ = try runDay(allocator, days[day], true);
+    _ = try runDay(allocator, days.getWork(day), true);
     common.shutdownPool();
 }

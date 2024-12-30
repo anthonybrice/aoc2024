@@ -125,7 +125,6 @@ fn generateDaysFile(allocator: Allocator, dir: []const u8) !void {
     defer file.close();
     try file.writeAll("pub const common = @import(\"common.zig\");\n");
 
-    // var day_list = std.ArrayList(struct { []const u8, usize }).init(allocator);
     var day_list = std.AutoArrayHashMap(usize, []const u8).init(allocator);
     defer {
         for (day_list.values()) |v| allocator.free(v);
@@ -148,7 +147,6 @@ fn generateDaysFile(allocator: Allocator, dir: []const u8) !void {
             .{ id, day_filename },
         );
 
-        // try day_list.append(.{ id, i });
         try day_list.put(i, id);
     }
 
@@ -161,10 +159,17 @@ fn generateDaysFile(allocator: Allocator, dir: []const u8) !void {
             .{ str, k, str, str, str },
         );
     }
+    try file.writeAll("\n");
 
-    try file.writeAll("pub const days = [_]common.Worker{ ");
+    try file.writeAll("pub const Day = enum {");
     for (day_list.values()) |v| {
-        try file.writer().print("{s}_work, ", .{v});
+        try file.writer().print("{s},", .{v});
     }
-    try file.writeAll("};\n");
+    try file.writeAll("};\n\n");
+
+    try file.writeAll("pub fn getWork(day: Day) common.Worker { return switch (day) { ");
+    for (day_list.values()) |v| {
+        try file.writer().print(".{s} => {s}_work, ", .{ v, v });
+    }
+    try file.writeAll("}; }\n");
 }
