@@ -7,11 +7,16 @@ pub const Context = struct {
     allocator: std.mem.Allocator,
     map: std.AutoHashMap(Vec2, u8),
     visited: std.AutoArrayHashMap(Vec2, void),
+    path: std.ArrayList(struct {
+        Vec2,
+        u8,
+    }),
     start_idx: Vec2,
 
     pub fn deinit(self: *Context) void {
         self.map.deinit();
         self.visited.deinit();
+        self.path.deinit();
     }
 };
 
@@ -22,6 +27,10 @@ pub fn parse(allocator: std.mem.Allocator, in: []const u8) !*Context {
     var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
     var map = std.AutoHashMap(Vec2, u8).init(allocator);
     const visited = std.AutoArrayHashMap(Vec2, void).init(allocator);
+    const path = std.ArrayList(struct {
+        Vec2,
+        u8,
+    }).init(allocator);
 
     var row: usize = 0;
     while (lines.next()) |line| {
@@ -37,6 +46,7 @@ pub fn parse(allocator: std.mem.Allocator, in: []const u8) !*Context {
     ctx.map = map;
     ctx.visited = visited;
     ctx.allocator = allocator;
+    ctx.path = path;
 
     return ctx;
 }
@@ -47,6 +57,7 @@ pub fn part1(ctx: *Context) ![]const u8 {
     var visited = &ctx.visited;
     while (true) {
         try visited.put(curr_idx, {});
+        try ctx.path.append(.{ curr_idx, curr_dir });
         var next_idx: Vec2 = undefined;
         if (curr_dir == '^') {
             next_idx = curr_idx - Vec2{ 1, 0 };

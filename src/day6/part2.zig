@@ -7,22 +7,27 @@ const Vec2 = @Vector(2, i64);
 pub fn part2(ctx: *Context) ![]const u8 {
     var sum: u64 = 0;
     var map = &ctx.map;
-    var visited = &ctx.visited;
-    for (visited.keys()) |k| {
-        const char = map.get(k).?;
-        if (char != '.') continue;
 
-        try map.put(k, '#');
-        const isCycle = try isCycleInMaze(ctx.allocator, map.*, ctx.start_idx);
-        if (isCycle) sum += 1;
-        try map.put(k, char);
+    var visited = std.AutoHashMap(Vec2, void).init(ctx.allocator);
+    defer visited.deinit();
+
+    for (ctx.path.items[0 .. ctx.path.items.len - 1], 0..) |x, i| {
+        try visited.put(x[0], {});
+        const next_idx = ctx.path.items[i + 1][0];
+        if (!visited.contains(next_idx)) {
+            const next_dir = ctx.path.items[i + 1][1];
+            const char = map.get(next_idx).?;
+            try map.put(next_idx, '#');
+            if (try isCycleInMaze(ctx.allocator, map.*, x[0], next_dir)) sum += 1;
+            try map.put(next_idx, char);
+        }
     }
 
     return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
-fn isCycleInMaze(allocator: std.mem.Allocator, map: std.AutoHashMap(Vec2, u8), start_idx: Vec2) !bool {
-    var curr_dir = map.get(start_idx).?;
+fn isCycleInMaze(allocator: std.mem.Allocator, map: std.AutoHashMap(Vec2, u8), start_idx: Vec2, dir: u8) !bool {
+    var curr_dir = dir;
     var curr_idx = start_idx;
 
     const State = struct {

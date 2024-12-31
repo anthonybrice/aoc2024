@@ -36,6 +36,7 @@ pub fn build(b: *std.Build) void {
     });
     lib.root_module.addImport("mvzr", mvzr.module("mvzr"));
     lib.root_module.addImport("clap", clap.module("clap"));
+    lib.linkLibC();
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
