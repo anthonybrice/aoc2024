@@ -4,7 +4,7 @@ const Context = @import("part1.zig").Context;
 const util = @import("../main.zig");
 
 pub fn part2(ctx: *Context) ![]const u8 {
-    var lines = std.mem.tokenizeSequence(u8, ctx.input, "\n");
+    var lines = std.mem.tokenizeScalar(u8, ctx.input, '\n');
 
     var sum: u64 = 0;
     while (lines.next()) |line| {
@@ -46,6 +46,8 @@ fn checkCombinations(operands: []const u64, solution: u64) !bool {
             } else if (operator == 2) {
                 result = try concatenateInts(result, operand);
             }
+
+            if (result > solution) break;
         }
 
         if (result == solution) {
@@ -57,7 +59,28 @@ fn checkCombinations(operands: []const u64, solution: u64) !bool {
 }
 
 fn concatenateInts(a: u64, b: u64) !u64 {
-    var buffer: [100]u8 = undefined;
-    const num_string = try std.fmt.bufPrint(&buffer, "{d}{d}", .{ a, b });
-    return try std.fmt.parseInt(u64, num_string, 10);
+    const num_digits_b = try countDigits(b);
+
+    return a * std.math.pow(u64, 10, num_digits_b) + b;
+}
+
+fn countDigits(n: u64) !u64 {
+    const f: f64 = std.math.log10(@abs(@as(f64, @floatFromInt(n))));
+    const f2: f64 = std.math.floor(f);
+    return if (n != 0) @as(u64, @intFromFloat(f2)) + 1 else 1;
+}
+
+test "countDigits" {
+    const n: u64 = 123456;
+    const expected: u64 = 6;
+    const result = try countDigits(n);
+    try std.testing.expectEqual(expected, result);
+}
+
+test "concatenateInts" {
+    const a: u64 = 123;
+    const b: u64 = 456;
+    const expected: u64 = 123456;
+    const result = try concatenateInts(a, b);
+    try std.testing.expectEqual(expected, result);
 }
