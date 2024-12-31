@@ -1,12 +1,10 @@
 const std = @import("std");
-const util = @import("../main.zig");
-const p1 = @import("part1.zig");
+const Allocator = std.mem.Allocator;
+const Context = @import("part1.zig").Context;
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
-
-    var device = try p1.Device.init(allocator, file_contents);
+pub fn part2(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    var device = try ctx.device.clone();
     defer device.deinit();
 
     const switched_outputs = try device.findSwitchedOutputs();
@@ -21,10 +19,14 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
     const acc = try l.toOwnedSlice();
     defer allocator.free(acc);
     std.mem.sort([]const u8, acc, {}, compareStrings);
-    for (acc) |output| {
-        std.debug.print("{s},", .{output});
+    var out = std.ArrayList(u8).init(allocator);
+    for (acc) |s| {
+        try out.appendSlice(s);
+        try out.append(',');
     }
-    std.debug.print("\n", .{});
+    _ = out.pop();
+
+    return out.toOwnedSlice();
 }
 
 fn compareStrings(_: void, lhs: []const u8, rhs: []const u8) bool {

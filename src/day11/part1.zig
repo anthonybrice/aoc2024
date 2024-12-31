@@ -1,37 +1,53 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 const M = std.math.big.int.Managed;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    init_stones: std.ArrayList(M),
+    init_stones_: std.ArrayList(u64),
 
-    var init_string = std.mem.tokenizeAny(u8, file_contents, " \n");
-    var init_stones = std.ArrayList(M).init(allocator);
+    pub fn deinit(self: *Context) void {
+        for (self.init_stones.items) |*item| item.deinit();
+        self.init_stones.deinit();
+        self.init_stones_.deinit();
+    }
+};
 
-    while (init_string.next()) |v| {
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.init_stones = std.ArrayList(M).init(allocator);
+    ctx.init_stones_ = std.ArrayList(u64).init(allocator);
+
+    var tokens = std.mem.tokenizeAny(u8, input, " \n");
+    while (tokens.next()) |v| {
         const num = try std.fmt.parseInt(u64, v, 10);
-        try init_stones.append(try M.initSet(allocator, num));
+        try ctx.init_stones.append(try M.initSet(allocator, num));
+        try ctx.init_stones_.append(num);
     }
 
-    var zero = try M.init(allocator);
+    return ctx;
+}
+
+pub fn part1(ctx: Context) ![]const u8 {
+    var zero = try M.init(ctx.allocator);
     defer zero.deinit();
-    var current = init_stones;
+    var current = ctx.init_stones;
     for (0..25) |i| {
-        std.debug.print("starting loop: {d}\n", .{i});
-        var next_stones = std.ArrayList(M).init(allocator);
+        var next_stones = std.ArrayList(M).init(ctx.allocator);
 
         for (current.items) |num| {
             if (M.eql(num, zero)) {
-                try next_stones.append(try M.initSet(allocator, 1));
-            } else if (try countDigits(allocator, num) % 2 == 0) {
-                const halves = try splitEvenDigits(allocator, num);
+                try next_stones.append(try M.initSet(ctx.allocator, 1));
+            } else if (try countDigits(ctx.allocator, num) % 2 == 0) {
+                const halves = try splitEvenDigits(ctx.allocator, num);
                 try next_stones.append(halves[0]);
                 try next_stones.append(halves[1]);
             } else {
-                var m = try M.initSet(allocator, 2024);
+                var m = try M.initSet(ctx.allocator, 2024);
                 defer m.deinit();
-                var new = try M.init(allocator);
+                var new = try M.init(ctx.allocator);
                 try M.mul(&new, &num, &m);
                 try next_stones.append(new);
             }
@@ -45,9 +61,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         current = next_stones;
     }
 
-    std.debug.print("{d}\n", .{current.items.len});
-    for (current.items) |*item| item.deinit();
-    current.deinit();
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{current.items.len});
 }
 
 fn splitEvenDigits(allocator: std.mem.Allocator, num: M) ![2]M {

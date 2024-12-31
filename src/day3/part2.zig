@@ -1,13 +1,10 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Context = @import("part1.zig").Context;
 const mvzr = @import("mvzr");
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
+pub fn part2(ctx: Context) ![]const u8 {
     const mul_regex = mvzr.compile("mul\\((\\d+),(\\d+)\\)|do\\(\\)|don't\\(\\)").?;
-    var mul_iter = mul_regex.iterator(file_contents);
+    var mul_iter = mul_regex.iterator(ctx.input);
 
     var do = true;
     var sum: u64 = 0;
@@ -28,5 +25,5 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }

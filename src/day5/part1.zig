@@ -1,32 +1,37 @@
 const std = @import("std");
-const util = @import("../main.zig");
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: std.mem.Allocator,
+    sections: Sections,
+};
 
-    const parsed_file = try parseFile(allocator, file_contents);
-    const pairs = parsed_file.pairs;
-    defer allocator.free(pairs);
-    const sequences = parsed_file.sequences;
-    defer {
-        for (sequences) |sequence| allocator.free(sequence);
-        allocator.free(sequences);
-    }
+pub fn parse(allocator: std.mem.Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.sections = try parseFile(allocator, in);
 
+    return ctx;
+}
+
+pub fn part1(ctx: Context) ![]const u8 {
     var sum: u64 = 0;
-    for (sequences) |sequence| {
-        const filtered_pairs = try filterPairs(allocator, pairs, sequence);
-        defer allocator.free(filtered_pairs);
-        const ordering = try topologicalSort(allocator, filtered_pairs);
-        defer allocator.free(ordering);
+    for (ctx.sections.sequences) |sequence| {
+        const filtered_pairs = try filterPairs(
+            ctx.allocator,
+            ctx.sections.pairs,
+            sequence,
+        );
+        defer ctx.allocator.free(filtered_pairs);
+        const ordering = try topologicalSort(ctx.allocator, filtered_pairs);
+        defer ctx.allocator.free(ordering);
         if (std.sort.isSorted(u64, sequence, ordering, lessThan)) {
             const middle_idx = sequence.len / 2;
             const middle_num = sequence[middle_idx];
             sum += middle_num;
         }
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 pub fn lessThan(context: []const u64, lhs: u64, rhs: u64) bool {

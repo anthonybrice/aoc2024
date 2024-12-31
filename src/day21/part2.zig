@@ -1,20 +1,20 @@
 const std = @import("std");
+const Context = @import("part1.zig").Context;
 const util = @import("../main.zig");
 const p1 = @import("part1.zig");
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
-
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
+pub fn part2(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    var lines = std.mem.tokenizeScalar(u8, ctx.in, '\n');
 
     var sum: u64 = 0;
     while (lines.next()) |line| {
         sum += try complexity(allocator, line, 25);
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return std.fmt.allocPrint(allocator, "{d}", .{sum});
 }
 
 fn complexity(

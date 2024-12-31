@@ -1,25 +1,46 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    maze: [][]const u8,
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var maze_list = std.ArrayList([]const u8).init(allocator);
-    while (lines.next()) |line| {
-        try maze_list.append(line);
+    pub fn deinit(self: *Context) void {
+        for (self.maze) |line| {
+            self.allocator.free(line);
+        }
+        self.allocator.free(self.maze);
     }
-    const maze = try maze_list.toOwnedSlice();
-    defer allocator.free(maze);
+};
 
-    const start = findReindeer(maze);
-    const end = findEnd(maze);
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
 
-    const path = try aStar(allocator, maze, start.pos, end);
-    defer allocator.free(path);
+    var lines = std.mem.tokenizeSequence(u8, input, "\n");
+    var maze = std.ArrayList([]u8).init(allocator);
+
+    while (lines.next()) |line| {
+        var new_line = std.ArrayList(u8).init(allocator);
+        for (line) |char| {
+            try new_line.append(char);
+        }
+        try maze.append(try new_line.toOwnedSlice());
+    }
+
+    ctx.maze = try maze.toOwnedSlice();
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    const start = findReindeer(ctx.maze);
+    const end = findEnd(ctx.maze);
+
+    const path = try aStar(ctx.allocator, ctx.maze, start.pos, end);
+    defer ctx.allocator.free(path);
 
     var turns: u64 = 0;
     var steps: u64 = 0;
@@ -40,9 +61,8 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
     }
 
     const score = 1000 * turns + steps;
-    std.debug.print("{d}\n", .{score});
 
-    // try printMazeWithPath(allocator, maze, path);
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{score});
 }
 
 const direction = enum {

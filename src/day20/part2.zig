@@ -1,41 +1,19 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Context = @import("part1.zig").Context;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub fn part2(ctx: *Context) ![]const u8 {
+    const start = try findChar(ctx.maze, 'S');
+    const end = try findChar(ctx.maze, 'E');
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
-    var maze = std.AutoArrayHashMap(Vec2, u8).init(allocator);
-    defer maze.deinit();
-
-    var row: i64 = 0;
-    var cols: i64 = 0;
-    while (lines.next()) |line| {
-        cols = @intCast(line.len);
-        var col: i64 = 0;
-        for (line) |char| {
-            const pos = .{ col, row };
-            try maze.put(pos, char);
-            col += 1;
-        }
-        row += 1;
-    }
-
-    // printMaze(maze, row, cols);
-
-    const start = try findChar(maze, 'S');
-    const end = try findChar(maze, 'E');
-
-    const path = try aStar(allocator, maze, start, end);
-    defer allocator.free(path);
+    const path = try aStar(ctx.allocator, ctx.maze, start, end);
+    defer ctx.allocator.free(path);
 
     // printMaze(maze, row, cols);
 
     // Find all positions with a distance of 20 or less and a path length of 100 or more between them
-    var cheats = std.AutoArrayHashMap(Vec2, std.ArrayList(Vec2)).init(allocator);
+    var cheats = std.AutoArrayHashMap(Vec2, std.ArrayList(Vec2)).init(ctx.allocator);
     defer {
         for (cheats.values()) |l| {
             l.deinit();
@@ -43,7 +21,7 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
         cheats.deinit();
     }
 
-    var cheat_times = std.AutoArrayHashMap(u64, u64).init(allocator);
+    var cheat_times = std.AutoArrayHashMap(u64, u64).init(ctx.allocator);
     defer cheat_times.deinit();
     for (path, 0.., 101..) |pos1, cheat_start, i| {
         if (i >= path.len) {
@@ -56,7 +34,7 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
             const path_d: usize = cheat_end - cheat_start;
             const saved_d = path_d - cheat_d;
             if (saved_d >= 100) {
-                var l = cheats.get(pos1) orelse std.ArrayList(Vec2).init(allocator);
+                var l = cheats.get(pos1) orelse std.ArrayList(Vec2).init(ctx.allocator);
                 try l.append(pos2);
                 try cheats.put(pos1, l);
                 const v = cheat_times.get(saved_d) orelse 0;
@@ -65,18 +43,12 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
         }
     }
 
-    for (cheat_times.keys()) |k| {
-        const v = cheat_times.get(k).?;
-        if (k >= 50) {
-            std.debug.print("There are {d} cheats that save {d} picoseconds.\n", .{ v, k });
-        }
-    }
-
     var sum: usize = 0;
     for (cheats.values()) |v| {
         sum += v.items.len;
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn printMaze(maze: std.AutoArrayHashMap(Vec2, u8), rows: i64, cols: i64) void {

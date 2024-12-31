@@ -1,24 +1,37 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    in: []const u8,
 
-    var adjs = try parse(allocator, file_contents);
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.in);
+    }
+};
+
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+
+    const new_in = try allocator.alloc(u8, input.len);
+    @memcpy(new_in, input);
+    ctx.in = new_in;
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    var adjs = try mkAdjs(allocator, ctx.in);
     defer {
         for (adjs.values()) |v| {
             v.deinit();
         }
         adjs.deinit();
     }
-
     const trios = try findAllTrios(allocator, adjs);
     defer trios.deinit();
-
-    // for (trios.items) |trio| {
-    //     std.debug.print("Trio: {s}, {s}, {s}\n", .{ trio[0], trio[1], trio[2] });
-    // }
 
     var sum: u64 = 0;
     for (trios.items) |trio| {
@@ -26,10 +39,11 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
             sum += 1;
         }
     }
-    std.debug.print("{}\n", .{sum});
+
+    return std.fmt.allocPrint(allocator, "{d}", .{sum});
 }
 
-fn parse(allocator: std.mem.Allocator, input: []const u8) !std.StringArrayHashMap(std.ArrayList([]const u8)) {
+fn mkAdjs(allocator: std.mem.Allocator, input: []const u8) !std.StringArrayHashMap(std.ArrayList([]const u8)) {
     var lines = std.mem.tokenizeScalar(u8, input, '\n');
     var adjs = std.StringArrayHashMap(std.ArrayList([]const u8)).init(allocator);
 

@@ -1,35 +1,25 @@
 const std = @import("std");
-const util = @import("../main.zig");
-const M = std.math.big.int.Managed;
+const Allocator = std.mem.Allocator;
+const Context = @import("part1.zig").Context;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var init_strings = std.mem.tokenizeAny(u8, file_contents, " \n");
-
+pub fn part2(ctx: Context) ![]const u8 {
+    const allocator = ctx.allocator;
     var stone_to_count_map = std.AutoArrayHashMap(u64, u64).init(allocator);
+    defer stone_to_count_map.deinit();
 
-    while (init_strings.next()) |v| {
-        const num = try std.fmt.parseInt(u64, v, 10);
-        if (stone_to_count_map.get(num)) |count| {
-            try stone_to_count_map.put(num, count + 1);
-        } else {
-            try stone_to_count_map.put(num, 1);
-        }
+    for (ctx.init_stones_.items) |num| {
+        const count = stone_to_count_map.get(num) orelse 0;
+        try stone_to_count_map.put(num, count + 1);
     }
 
     var stone_to_stones_map = std.AutoArrayHashMap(u64, []u64).init(allocator);
     defer {
-        for (stone_to_stones_map.values()) |stones| {
-            allocator.free(stones);
-        }
+        for (stone_to_stones_map.values()) |stones| allocator.free(stones);
         stone_to_stones_map.deinit();
     }
 
     var current_map = stone_to_count_map;
-    for (0..75) |i| {
-        _ = i;
+    for (0..75) |_| {
         var new_map = std.AutoArrayHashMap(u64, u64).init(allocator);
         for (current_map.keys()) |stone| {
             const new_nums = try doBlink(
@@ -55,7 +45,8 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         count += v;
     }
     current_map.deinit();
-    std.debug.print("{d}\n", .{count});
+
+    return try std.fmt.allocPrint(allocator, "{d}", .{count});
 }
 
 fn doBlink(

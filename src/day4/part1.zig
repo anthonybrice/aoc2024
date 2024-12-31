@@ -12,26 +12,48 @@ const directions = [_][2]i64{
     .{ 1, 1 }, // down-right
 };
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: std.mem.Allocator,
+    array: [][]const u8,
+    map: std.AutoArrayHashMap([2]usize, u8),
+};
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
+pub fn parse(allocator: std.mem.Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    var lines = std.mem.tokenizeSequence(u8, in, "\n");
     var array_acc = std.ArrayList([]const u8).init(allocator);
-    while (lines.next()) |line| try array_acc.append(line);
-    const array = try array_acc.toOwnedSlice();
-    defer allocator.free(array);
+    defer array_acc.deinit();
+    var map = std.AutoArrayHashMap([2]usize, u8).init(allocator);
 
+    var row: usize = 0;
+
+    while (lines.next()) |line| {
+        try array_acc.append(line);
+
+        for (line, 0..) |char, col| {
+            try map.put(.{ row, col }, char);
+        }
+        row += 1;
+    }
+
+    ctx.array = try array_acc.toOwnedSlice();
+    ctx.map = map;
+    ctx.allocator = allocator;
+
+    return ctx;
+}
+
+pub fn part1(ctx: Context) ![]const u8 {
     var sum: u64 = 0;
-    for (array, 0..) |line, row| {
+    for (ctx.array, 0..) |line, row| {
         for (line, 0..) |char, col| {
             if (char == 'X') {
-                sum += searchForXmas(array, row, col);
+                sum += searchForXmas(ctx.array, row, col);
             }
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn searchForXmas(array: [][]const u8, row: usize, col: usize) u64 {

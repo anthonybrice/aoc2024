@@ -1,24 +1,45 @@
 const std = @import("std");
 const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    raw_warehouse: []const u8,
+    moves: []const u8,
 
-    var sections = std.mem.tokenizeSequence(u8, file_contents, "\n\n");
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.raw_warehouse);
+        self.allocator.free(self.moves);
+    }
+};
 
-    const warehouse = try parseWarehouse(allocator, sections.next().?);
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+
+    var sections = std.mem.tokenizeSequence(u8, input, "\n\n");
+
+    const raw_warehouse_ = sections.next().?;
+    const raw_warehouse = try allocator.alloc(u8, raw_warehouse_.len);
+    @memcpy(raw_warehouse, raw_warehouse_);
+    ctx.raw_warehouse = raw_warehouse;
+
+    ctx.moves = try parseMoves(allocator, sections.next().?);
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    const warehouse: [][]u8 = try parseWarehouse(allocator, ctx.raw_warehouse);
     defer {
         for (warehouse) |line| {
             allocator.free(line);
         }
         allocator.free(warehouse);
     }
-
-    const moves = try parseMoves(allocator, sections.next().?);
-    defer allocator.free(moves);
 
     var pos: Vec2 = undefined;
     for (warehouse, 0..) |line, row| {
@@ -37,12 +58,8 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    for (moves) |move| {
+    for (ctx.moves) |move| {
         pos = doMove(warehouse, pos, getDirection(move));
-        // for (warehouse) |line| {
-        //     std.debug.print("{s}\n", .{line});
-        // }
-        // std.debug.print("\n", .{});
     }
 
     var sum: usize = 0;
@@ -54,7 +71,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn parseWarehouse(allocator: std.mem.Allocator, input: []const u8) ![][]u8 {

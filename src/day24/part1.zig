@@ -1,15 +1,29 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    device: Device,
 
-    var device = try Device.init(allocator, file_contents);
+    pub fn deinit(self: *Context) void {
+        self.device.deinit();
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.device = try Device.init(allocator, in);
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    var device = try ctx.device.clone();
     defer device.deinit();
     try device.eval();
-    const z_value = try device.getValue('z');
-    std.debug.print("{d}\n", .{z_value});
+
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{try device.getValue('z')});
 }
 
 const GateOp = enum {

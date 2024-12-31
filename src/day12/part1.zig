@@ -1,69 +1,71 @@
 const std = @import("std");
-const util = @import("../main.zig");
-const M = std.math.big.int.Managed;
+const Allocator = std.mem.Allocator;
 
-const Region = struct {
-    area: i64,
-    perimeter: i64,
+pub const Context = struct {
+    allocator: Allocator,
+    garden: std.AutoArrayHashMap([2]i64, u8),
+
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.garden);
+    }
 };
 
-// const Position = struct {
-//     row: i64,
-//     col: i64,
-// };
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.garden = std.AutoArrayHashMap([2]i64, u8).init(allocator);
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var lines = std.mem.tokenizeAny(u8, file_contents, "\n");
-    var garden = std.AutoArrayHashMap([2]i64, u8).init(allocator);
-    defer garden.deinit();
+    var lines = std.mem.tokenizeAny(u8, in, "\n");
     var row: i64 = 0;
     while (lines.next()) |line| {
         for (line, 0..) |c, col| {
-            try garden.put(.{ row, @intCast(col) }, c);
+            try ctx.garden.put(.{ row, @intCast(col) }, c);
         }
         row += 1;
     }
 
-    var visited = std.AutoArrayHashMap([2]i64, void).init(allocator);
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    var visited = std.AutoArrayHashMap([2]i64, void).init(ctx.allocator);
     defer visited.deinit();
 
-    var areas = std.AutoArrayHashMap(u8, std.ArrayList(Region)).init(allocator);
+    var areas = std.AutoArrayHashMap(u8, std.ArrayList(Region)).init(ctx.allocator);
     defer {
         for (areas.values()) |regions| regions.deinit();
         areas.deinit();
     }
 
-    for (garden.keys()) |key| {
+    for (ctx.garden.keys()) |key| {
         const pos = key;
-        const letter = garden.get(pos).?;
+        const letter = ctx.garden.get(pos).?;
         if (!visited.contains(pos)) {
-            const result = try floodFill(allocator, garden, &visited, pos, letter);
+            const result = try floodFill(ctx.allocator, ctx.garden, &visited, pos, letter);
             if (!areas.contains(letter)) {
-                var l = std.ArrayList(Region).init(allocator);
-                try l.append(result);
-                try areas.put(letter, l);
-            } else {
-                var l = areas.get(letter).?;
-                try l.append(result);
-                try areas.put(letter, l);
+                try areas.put(letter, std.ArrayList(Region).init(ctx.allocator));
             }
+            var r = areas.get(letter).?;
+            try r.append(result);
+            try areas.put(letter, r);
         }
     }
 
     var sum: i64 = 0;
     for (areas.keys()) |key| {
-        // const letter = key;
         const regions = areas.get(key).?;
         for (regions.items) |region| {
-            // std.debug.print("Letter: {c}, Area: {d}, Perimeter: {d}\n", .{ letter, region.area, region.perimeter });
             sum += region.area * region.perimeter;
         }
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
+
+const Region = struct {
+    area: i64,
+    perimeter: i64,
+};
 
 fn floodFill(
     allocator: std.mem.Allocator,

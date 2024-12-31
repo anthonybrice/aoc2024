@@ -1,31 +1,50 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    robots: []Robot,
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.robots);
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+
+    var lines = std.mem.tokenizeSequence(u8, in, "\n");
     var robots = std.ArrayList(Robot).init(allocator);
     defer robots.deinit();
     while (lines.next()) |line| {
         try robots.append(try Robot.parseRobot(line));
     }
 
-    for (0..100) |_| {
-        for (robots.items) |*robot| {
-            robot.move();
-        }
-    }
+    ctx.allocator = allocator;
+    ctx.robots = try robots.toOwnedSlice();
 
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
     const width = grid[0];
     const height = grid[1];
     const mid_x = width / 2;
     const mid_y = height / 2;
 
+    const robots_ = try ctx.allocator.alloc(Robot, ctx.robots.len);
+    defer ctx.allocator.free(robots_);
+    @memcpy(robots_, ctx.robots);
+
+    for (0..100) |_| {
+        for (robots_) |*robot| {
+            robot.move();
+        }
+    }
+
     var quads = [4]usize{ 0, 0, 0, 0 };
 
-    for (robots.items) |robot| {
+    for (robots_) |robot| {
         const pos = robot.pos;
         if (pos[0] == mid_x or pos[1] == mid_y) {
             continue;
@@ -40,16 +59,16 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    std.debug.print("{d}\n", .{quads[0] * quads[1] * quads[2] * quads[3]});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{quads[0] * quads[1] * quads[2] * quads[3]});
 }
 
 const grid = [2]i64{ 101, 103 };
 
-const Robot = struct {
+pub const Robot = struct {
     pos: @Vector(2, i64),
     v: @Vector(2, i64),
 
-    fn parseRobot(line: []const u8) !Robot {
+    pub fn parseRobot(line: []const u8) !Robot {
         var tokens = std.mem.tokenizeAny(u8, line, "p=,v ");
 
         const px = try std.fmt.parseInt(i64, tokens.next().?, 10);
@@ -64,7 +83,7 @@ const Robot = struct {
         };
     }
 
-    fn move(self: *Robot) void {
+    pub fn move(self: *Robot) void {
         self.pos = self.pos + self.v;
         if (self.pos[0] < 0) {
             self.pos[0] = self.pos[0] + grid[0];

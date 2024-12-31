@@ -1,23 +1,10 @@
 const std = @import("std");
-const util = @import("../main.zig");
-const M = std.math.big.int.Managed;
+const Allocator = std.mem.Allocator;
+const Context = @import("part1.zig").Context;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var lines = std.mem.tokenizeAny(u8, file_contents, "\n");
-    var garden = std.AutoArrayHashMap([2]i64, u8).init(allocator);
-    defer garden.deinit();
-    var row: i64 = 0;
-    var line_len: usize = 0;
-    while (lines.next()) |line| {
-        line_len = @intCast(line.len);
-        for (line, 0..) |c, col| {
-            try garden.put(.{ row, @intCast(col) }, c);
-        }
-        row += 1;
-    }
+pub fn part2(ctx: Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    var garden = ctx.garden;
 
     var visited = std.AutoArrayHashMap([2]i64, void).init(allocator);
     defer visited.deinit();
@@ -49,7 +36,8 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
             sum += region.corners * region.area;
         }
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return try std.fmt.allocPrint(allocator, "{d}", .{sum});
 }
 
 const Region = struct {

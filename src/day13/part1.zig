@@ -1,11 +1,19 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    machines: []ClawMachine,
 
-    var sections = std.mem.tokenizeSequence(u8, file_contents, "\n\n");
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.machines);
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+
+    var sections = std.mem.tokenizeSequence(u8, in, "\n\n");
     var machines = std.ArrayList(ClawMachine).init(allocator);
     defer machines.deinit();
     while (sections.next()) |section| {
@@ -13,11 +21,19 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         try machines.append(machine);
     }
 
+    ctx.allocator = allocator;
+    ctx.machines = try machines.toOwnedSlice();
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
     var sum: u64 = 0;
-    for (machines.items) |machine| {
+    for (ctx.machines) |machine| {
         sum += machine.prizeMoves() catch continue;
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 const ClawMachine = struct {
@@ -59,7 +75,7 @@ const ClawMachine = struct {
         return .{ x, y };
     }
 
-    fn prizeMoves(self: ClawMachine) !u64 {
+    pub fn prizeMoves(self: ClawMachine) !u64 {
         const x1: f64 = @floatFromInt(self.a[0]);
         const x2: f64 = @floatFromInt(self.a[1]);
         const y1: f64 = @floatFromInt(self.b[0]);

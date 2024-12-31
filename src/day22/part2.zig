@@ -1,12 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const util = @import("../main.zig");
 
 const Vec2 = @Vector(2, i64);
-
-pub fn main2(_: std.mem.Allocator, _: []const u8) !void {
-    unreachable;
-}
 
 pub const Context = struct {
     allocator: Allocator,
@@ -32,11 +27,7 @@ pub fn parse(allocator: Allocator, in: []const u8) !*Context {
     return ctx;
 }
 
-pub fn part1(_: Context) ![]const u8 {
-    return "Merry Christmas!";
-}
-
-pub fn part2(ctx: Context) ![]const u8 {
+pub fn part2(ctx: *Context) ![]const u8 {
     // a map of the total bananas for each 4-price-change sequence
     var market = std.AutoArrayHashMap(i64, i64).init(ctx.allocator);
     defer market.deinit();
@@ -108,7 +99,7 @@ fn getIndex(a: i64, b: i64, c: i64, d: i64) i64 {
     return (19 * 19 * 19 * (a + 9)) + (19 * 19 * (b + 9)) + (19 * (c + 9)) + (d + 9);
 }
 
-fn nextSecretNumber(n: i64) i64 {
+pub fn nextSecretNumber(n: i64) i64 {
     const n1 = n * 64;
     const n2 = n1 ^ n;
     const n3 = @mod(n2, 16777216);
@@ -120,26 +111,4 @@ fn nextSecretNumber(n: i64) i64 {
     const n9 = @mod(n8, 16777216);
 
     return n9;
-}
-
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-    const path = "in/day22.txt";
-
-    var in = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
-    defer in.close();
-
-    const file_contents = try in.readToEndAlloc(allocator, std.math.maxInt(usize));
-    defer allocator.free(file_contents);
-
-    const ctx = try parse(allocator, file_contents);
-    defer {
-        ctx.deinit();
-        allocator.destroy(ctx);
-    }
-    const r = try part2(ctx.*);
-    defer allocator.free(r);
-    std.debug.print("{s}\n", .{r});
 }

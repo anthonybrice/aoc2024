@@ -1,14 +1,32 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const util = @import("../main.zig");
-const pf = @import("../day21/pathfind.zig");
+const pf = @import("pathfind.zig");
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    in: []const u8,
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.in);
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    const new_in = try allocator.alloc(u8, in.len);
+    @memcpy(new_in, in);
+    ctx.in = new_in;
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    var lines = std.mem.tokenizeScalar(u8, ctx.in, '\n');
 
     var sum: usize = 0;
     while (lines.next()) |line| {
@@ -17,13 +35,12 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
             line,
         );
         defer allocator.free(seq);
-        // std.debug.print("{s}\n", .{seq});
 
         const num: usize = try std.fmt.parseInt(usize, line[0 .. line.len - 1], 10);
-        // std.debug.print("{d} * {d} = {d}\n", .{ seq.len, num, seq.len * num });
         sum += (seq.len) * num;
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return std.fmt.allocPrint(allocator, "{d}", .{sum});
 }
 
 fn shortestSequence(
@@ -59,12 +76,6 @@ fn shortestSequence(
             try d2_path.appendSlice(dir2_instrs);
         }
         try sequence.appendSlice(d2_path.items);
-
-        // std.debug.print("To type {c}\n", .{c});
-        // std.debug.print("num_path: {s}\n", .{np_path});
-        // std.debug.print("d1_path: {s}\n", .{d1_path.items});
-        // std.debug.print("d2_path: {s}\n", .{d2_path.items});
-        // std.debug.print("\n", .{});
     }
 
     return sequence.toOwnedSlice();

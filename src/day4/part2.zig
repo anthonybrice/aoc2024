@@ -1,32 +1,15 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Context = @import("part1.zig").Context;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var map = std.AutoArrayHashMap([2]usize, u8).init(allocator);
-    defer map.deinit();
-
-    var row: usize = 0;
-    var line_len: usize = 0;
-    while (lines.next()) |line| {
-        line_len = line.len;
-        for (line, 0..) |char, col| {
-            try map.put(.{ row, col }, char);
-        }
-        row += 1;
-    }
-
-    var iter = map.iterator();
+pub fn part2(ctx: Context) ![]const u8 {
     var sum: u64 = 0;
+    var iter = ctx.map.iterator();
     while (iter.next()) |entry| {
         const key = entry.key_ptr;
-        if (isXmas(map, key[0], key[1])) sum += 1;
+        if (isXmas(ctx.map, key[0], key[1])) sum += 1;
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn isXmas(

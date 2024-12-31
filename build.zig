@@ -69,6 +69,12 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("clap", clap.module("clap"));
     exe.linkLibC();
     b.installArtifact(exe);
+    const day_cmd = b.addRunArtifact(exe);
+    const run_day = b.step("run-day", "Run a day");
+    run_day.dependOn(&day_cmd.step);
+    if (b.args) |args| {
+        day_cmd.addArgs(args);
+    }
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish

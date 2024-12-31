@@ -1,38 +1,23 @@
 const std = @import("std");
 const d2p1 = @import("part1.zig");
-const util = @import("../main.zig");
+const Context = d2p1.Context;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var reports = std.mem.tokenizeSequence(u8, file_contents, "\n");
-
+pub fn part2(ctx: Context) ![]const u8 {
+    const allocator = ctx.allocator;
     var sum: u64 = 0;
-    while (reports.next()) |line| {
-        var tokens = std.mem.tokenizeScalar(u8, line, ' ');
-        var levels = std.ArrayList(u64).init(allocator);
-
-        while (tokens.next()) |token| {
-            const level = try std.fmt.parseInt(u64, token, 10);
-            try levels.append(level);
-        }
-
-        const levels_slice = try levels.toOwnedSlice();
-        defer allocator.free(levels_slice);
-
-        if (d2p1.isIncreasingSafely(levels_slice) or d2p1.isDecreasingSafely(levels_slice)) {
+    for (ctx.reports) |levels| {
+        if (d2p1.isIncreasingSafely(levels) or d2p1.isDecreasingSafely(levels)) {
             sum += 1;
         } else {
-            for (0..levels_slice.len) |i| {
+            for (0..levels.len) |i| {
                 var new_levels = std.ArrayList(u64).init(allocator);
-                for (levels_slice, 0..levels_slice.len) |level, j| {
+                for (levels, 0..) |level, j| {
                     if (j == i) continue;
                     try new_levels.append(level);
                 }
-                const levels_slice_dampened = try new_levels.toOwnedSlice();
-                defer allocator.free(levels_slice_dampened);
-                if (d2p1.isIncreasingSafely(levels_slice_dampened) or d2p1.isDecreasingSafely(levels_slice_dampened)) {
+                const dampened = try new_levels.toOwnedSlice();
+                defer allocator.free(dampened);
+                if (d2p1.isIncreasingSafely(dampened) or d2p1.isDecreasingSafely(dampened)) {
                     sum += 1;
                     break;
                 }
@@ -40,5 +25,5 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }

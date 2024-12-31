@@ -1,33 +1,20 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Context = @import("part1.zig").Context;
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var height_map = std.AutoArrayHashMap([2]usize, u64).init(allocator);
-    defer height_map.deinit();
-    var row: usize = 0;
-    var line_len: usize = undefined;
-    while (lines.next()) |line| {
-        line_len = line.len;
-        for (line, 0..) |c, col| {
-            try height_map.put(.{ row, col }, c - '0');
-        }
-        row += 1;
-    }
+pub fn part2(ctx: Context) ![]const u8 {
+    const row = ctx.dims[0];
+    const col = ctx.dims[1];
 
     var sum: u64 = 0;
     for (0..row) |i| {
-        for (0..line_len) |j| {
-            if (height_map.get(.{ i, j }) == 0) {
-                sum += try find_trail(allocator, height_map, i, j);
+        for (0..col) |j| {
+            if (ctx.height_map.get(.{ i, j }) == 0) {
+                sum += try find_trail(ctx.allocator, ctx.height_map, i, j);
             }
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 const directions = [_][2]i64{

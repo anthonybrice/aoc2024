@@ -1,24 +1,13 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Context = @import("part1.zig").Context;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub fn part2(ctx: *Context) ![]const u8 {
+    const start = findReindeer(ctx.maze).pos;
+    const end = findEnd(ctx.maze);
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var maze_list = std.ArrayList([]const u8).init(allocator);
-    while (lines.next()) |line| {
-        try maze_list.append(line);
-    }
-    const maze = try maze_list.toOwnedSlice();
-    defer allocator.free(maze);
-
-    const start = findReindeer(maze).pos;
-    const end = findEnd(maze);
-
-    var foos = try dijkstra(allocator, maze, start, end);
+    var foos = try dijkstra(ctx.allocator, ctx.maze, start, end);
     defer {
         foos.dist.deinit();
         for (foos.prev.values()) |val| {
@@ -26,8 +15,9 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
         }
         foos.prev.deinit();
     }
-    const sum = try countNodesFromEnd(allocator, foos.prev, end);
-    std.debug.print("{d}\n", .{sum});
+    const sum = try countNodesFromEnd(ctx.allocator, foos.prev, end);
+
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 const direction = enum {

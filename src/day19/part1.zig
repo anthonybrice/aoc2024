@@ -1,31 +1,61 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    towel_patterns: []const []const u8,
+    towels: []const []const u8,
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
-    const towel_patterns = try parseAvailablePatterns(allocator, lines.next().?);
-    defer allocator.free(towel_patterns);
+    pub fn deinit(self: *Context) void {
+        for (self.towel_patterns) |pattern| {
+            self.allocator.free(pattern);
+        }
+        self.allocator.free(self.towel_patterns);
+        for (self.towels) |towel| {
+            self.allocator.free(towel);
+        }
+        self.allocator.free(self.towels);
+    }
+};
 
-    var memo = std.StringHashMap(bool).init(allocator);
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+
+    var lines = std.mem.tokenizeScalar(u8, in, '\n');
+    ctx.towel_patterns = try parseAvailablePatterns(allocator, lines.next().?);
+
+    var towels = std.ArrayList([]const u8).init(allocator);
+    defer towels.deinit();
+    while (lines.next()) |towel| {
+        const new_towel = try allocator.alloc(u8, towel.len);
+        @memcpy(new_towel, towel);
+        try towels.append(new_towel);
+    }
+
+    ctx.towels = try towels.toOwnedSlice();
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    var memo = std.StringHashMap(bool).init(ctx.allocator);
     defer memo.deinit();
 
     var sum: u64 = 0;
-    while (lines.next()) |towel| {
+    for (ctx.towels) |towel| {
         if (try isPossible(
             towel,
-            towel_patterns,
+            ctx.towel_patterns,
             &memo,
         )) {
             sum += 1;
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn parseAvailablePatterns(allocator: std.mem.Allocator, in: []const u8) ![]const []const u8 {
@@ -34,7 +64,9 @@ fn parseAvailablePatterns(allocator: std.mem.Allocator, in: []const u8) ![]const
     defer towel_patterns.deinit();
 
     while (tokens.next()) |token| {
-        try towel_patterns.append(token);
+        const new_pattern = try allocator.alloc(u8, token.len);
+        @memcpy(new_pattern, token);
+        try towel_patterns.append(new_pattern);
     }
 
     return towel_patterns.toOwnedSlice();

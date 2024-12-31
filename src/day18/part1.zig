@@ -1,45 +1,52 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: Allocator,
+    memory: std.AutoArrayHashMap(Vec2, u8),
+    lines: std.mem.TokenIterator(u8, .scalar),
+    path: ?std.AutoArrayHashMap(Vec2, void),
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
-    var memory = std.AutoArrayHashMap(Vec2, u8).init(allocator);
-    defer memory.deinit();
+    pub fn deinit(self: *Context) void {
+        self.memory.deinit();
+        if (self.path != null) self.path.?.deinit();
+    }
+};
+
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.memory = std.AutoArrayHashMap(Vec2, u8).init(allocator);
 
     for (0..71) |i| {
-        const ip: i64 = @intCast(i);
         for (0..71) |j| {
-            const jp: i64 = @intCast(j);
-            try memory.put(Vec2{ ip, jp }, '.');
+            try ctx.memory.put(Vec2{ @intCast(i), @intCast(j) }, '.');
         }
     }
+
+    var lines = std.mem.tokenizeScalar(u8, in, '\n');
 
     for (0..1024) |_| {
         const line = lines.next().?;
         var tokens = std.mem.tokenizeScalar(u8, line, ',');
         const y = try std.fmt.parseInt(i64, tokens.next().?, 10);
         const x = try std.fmt.parseInt(i64, tokens.next().?, 10);
-        try memory.put(Vec2{ x, y }, '#');
+        try ctx.memory.put(Vec2{ x, y }, '#');
     }
 
-    // printMaze(memory);
+    ctx.lines = lines;
+    ctx.path = null;
 
-    const path = try aStar(allocator, memory, Vec2{ 0, 0 }, Vec2{ 70, 70 });
-    defer allocator.free(path);
+    return ctx;
+}
 
-    for (path) |pos| {
-        // std.debug.print("{d},{d}\n", .{pos[0], pos[1]});
-        try memory.put(pos, 'O');
-    }
+pub fn part1(ctx: *Context) ![]const u8 {
+    const path = try aStar(ctx.allocator, ctx.memory, Vec2{ 0, 0 }, Vec2{ 70, 70 });
+    ctx.path = path;
 
-    printMaze(memory);
-
-    std.debug.print("{d}\n", .{path.len - 1});
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{path.keys().len - 1});
 }
 
 fn heuristic(a: Vec2, b: Vec2) i64 {
@@ -65,7 +72,7 @@ const directions = [_]Vec2{
     Vec2{ 0, 1 },
 };
 
-pub fn aStar(allocator: std.mem.Allocator, maze: std.AutoArrayHashMap(Vec2, u8), start: Vec2, goal: Vec2) ![]Vec2 {
+pub fn aStar(allocator: std.mem.Allocator, maze: std.AutoArrayHashMap(Vec2, u8), start: Vec2, goal: Vec2) !std.AutoArrayHashMap(Vec2, void) {
     var open_set = std.PriorityQueue(PqItem, void, lessThan).init(allocator, {});
     defer open_set.deinit();
     try open_set.add(.{ .pos = start, .f_score = heuristic(start, goal) });
@@ -103,18 +110,17 @@ pub fn aStar(allocator: std.mem.Allocator, maze: std.AutoArrayHashMap(Vec2, u8),
     return error.PathNotFound;
 }
 
-fn reconstructPath(allocator: std.mem.Allocator, cameFrom: std.AutoArrayHashMap(Vec2, Vec2), current: Vec2) ![]Vec2 {
-    var totalPath = std.ArrayList(Vec2).init(allocator);
-    defer totalPath.deinit();
+fn reconstructPath(allocator: std.mem.Allocator, cameFrom: std.AutoArrayHashMap(Vec2, Vec2), current: Vec2) !std.AutoArrayHashMap(Vec2, void) {
+    var totalPath = std.AutoArrayHashMap(Vec2, void).init(allocator);
 
-    try totalPath.append(current);
+    try totalPath.put(current, {});
     var curr = current;
     while (cameFrom.contains(curr)) {
         curr = cameFrom.get(curr).?;
-        try totalPath.append(curr);
+        try totalPath.put(curr, {});
     }
 
-    return totalPath.toOwnedSlice();
+    return totalPath;
 }
 
 fn printMaze(memory: std.AutoArrayHashMap(Vec2, u8)) void {

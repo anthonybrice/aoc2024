@@ -1,31 +1,46 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const util = @import("../main.zig");
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+pub const Context = struct {
+    allocator: std.mem.Allocator,
+    input: []const u8,
 
-    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
+    pub fn deinit(self: *Context) void {
+        self.allocator.free(self.input);
+    }
+};
+
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.input = try std.fmt.allocPrint(allocator, "{s}", .{input});
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    var lines = std.mem.tokenizeSequence(u8, ctx.input, "\n");
 
     var sum: u64 = 0;
     while (lines.next()) |line| {
         var tokens = std.mem.tokenizeAny(u8, line, ": ");
         const solution = try std.fmt.parseInt(u64, tokens.next().?, 10);
-        var operands_list = std.ArrayList(u64).init(allocator);
-        // defer operands.deinit();
+        var operands_list = std.ArrayList(u64).init(ctx.allocator);
+        defer operands_list.deinit();
         while (tokens.next()) |token| {
             const operand = try std.fmt.parseInt(u64, token, 10);
             try operands_list.append(operand);
         }
         const operands = try operands_list.toOwnedSlice();
-        defer allocator.free(operands);
+        defer ctx.allocator.free(operands);
 
         if (checkCombinations(operands, solution)) {
-            // std.debug.print("Solution found for line: {any}: {any}\n", .{ solution, operands });
             sum += solution;
         }
     }
-    std.debug.print("{d}\n", .{sum});
+
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn checkCombinations(operands: []const u64, solution: u64) bool {

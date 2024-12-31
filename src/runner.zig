@@ -92,26 +92,31 @@ pub fn runDay(allocator: Allocator, work: common.Worker, single: bool) !u64 {
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
-    }
+    var gpa = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
-
-    // const run_all = false;
-    // var run_bench = false;
-    const day_str = args[1];
-    const day = std.meta.stringToEnum(days.Day, day_str) orelse {
-        std.debug.print("Invalid day\n", .{});
-        return;
-    };
     common.ensurePool(allocator);
-
     std.debug.print("\tparse\tpart1\tpart2\ttotal\n", .{});
 
-    _ = try runDay(allocator, days.getWork(day), true);
+    if (args.len < 2 or std.mem.eql(u8, args[1], "all")) {
+        var all: u64 = 0;
+        const foo = std.enums.values(days.Day);
+        for (foo) |day| {
+            all += try runDay(allocator, days.getWork(day), false);
+        }
+        std.debug.print("\nall days total: ", .{});
+        printTime_(all, 999);
+        std.debug.print("\n", .{});
+    } else {
+        const day_str = args[1];
+        const day = std.meta.stringToEnum(days.Day, day_str) orelse {
+            std.debug.print("Invalid day\n", .{});
+            return;
+        };
+        _ = try runDay(allocator, days.getWork(day), true);
+    }
+
     common.shutdownPool();
 }

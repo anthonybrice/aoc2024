@@ -1,44 +1,64 @@
 const std = @import("std");
 const util = @import("../main.zig");
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+const Vec2 = @Vector(2, i64);
+
+pub const Context = struct {
+    allocator: std.mem.Allocator,
+    map: std.AutoHashMap(Vec2, u8),
+    visited: std.AutoArrayHashMap(Vec2, void),
+    start_idx: Vec2,
+
+    pub fn deinit(self: *Context) void {
+        self.map.deinit();
+        self.visited.deinit();
+    }
+};
+
+pub fn parse(allocator: std.mem.Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    const file_contents = in;
 
     var lines = std.mem.tokenizeSequence(u8, file_contents, "\n");
-    var map = std.AutoArrayHashMap([2]i64, V).init(allocator);
-    defer map.deinit();
+    var map = std.AutoHashMap(Vec2, u8).init(allocator);
+    const visited = std.AutoArrayHashMap(Vec2, void).init(allocator);
 
-    var start_idx: [2]i64 = undefined;
-    var row: i64 = 0;
+    var row: usize = 0;
     while (lines.next()) |line| {
         for (line, 0..) |char, col| {
-            try map.put(.{ row, @intCast(col) }, V{ .char = char, .visited = false });
+            try map.put(.{ @intCast(row), @intCast(col) }, char);
             if (char == '^' or char == 'v' or char == '<' or char == '>') {
-                start_idx = .{ row, @intCast(col) };
+                ctx.start_idx = .{ @intCast(row), @intCast(col) };
             }
         }
         row += 1;
     }
 
-    var curr_dir = map.get(start_idx).?.char;
-    var curr_idx = start_idx;
+    ctx.map = map;
+    ctx.visited = visited;
+    ctx.allocator = allocator;
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    var curr_dir = ctx.map.get(ctx.start_idx).?;
+    var curr_idx = ctx.start_idx;
+    var visited = &ctx.visited;
     while (true) {
-        const curr_char = map.get(curr_idx).?.char;
-        try map.put(curr_idx, V{ .char = curr_char, .visited = true });
-        var next_idx: [2]i64 = undefined;
+        try visited.put(curr_idx, {});
+        var next_idx: Vec2 = undefined;
         if (curr_dir == '^') {
-            next_idx = .{ curr_idx[0] - 1, curr_idx[1] };
+            next_idx = curr_idx - Vec2{ 1, 0 };
         } else if (curr_dir == 'v') {
-            next_idx = .{ curr_idx[0] + 1, curr_idx[1] };
+            next_idx = curr_idx + Vec2{ 1, 0 };
         } else if (curr_dir == '<') {
-            next_idx = .{ curr_idx[0], curr_idx[1] - 1 };
+            next_idx = curr_idx - Vec2{ 0, 1 };
         } else if (curr_dir == '>') {
-            next_idx = .{ curr_idx[0], curr_idx[1] + 1 };
+            next_idx = curr_idx + Vec2{ 0, 1 };
         }
-        const next_char = map.get(next_idx);
-        if (next_char == null) break;
-        if (next_char.?.char == '#') {
+        const next_char = ctx.map.get(next_idx) orelse break;
+        if (next_char == '#') {
             if (curr_dir == '^') {
                 curr_dir = '>';
                 next_idx = curr_idx;
@@ -56,15 +76,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         curr_idx = next_idx;
     }
 
-    var map_iter = map.iterator();
-    var sum: u64 = 0;
-    while (map_iter.next()) |entry| {
-        if (entry.value_ptr.*.visited == true) sum += 1;
-    }
-    std.debug.print("{d}\n", .{sum});
-}
+    const sum: u64 = visited.keys().len;
 
-const V = struct {
-    char: u8,
-    visited: bool,
-};
+    return std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
+}

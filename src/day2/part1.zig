@@ -1,32 +1,50 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
-pub fn main(allocator: std.mem.Allocator, input_file: []const u8) !void {
-    var in = try std.fs.cwd().openFile(input_file, .{ .mode = .read_only });
-    defer in.close();
+pub const Context = struct {
+    allocator: Allocator,
+    reports: []const []const u64,
 
-    const file_contents = try in.readToEndAlloc(allocator, std.math.maxInt(usize));
-    defer allocator.free(file_contents);
+    pub fn deinit(self: Context) void {
+        for (self.reports) |levels| {
+            self.allocator.free(levels);
+        }
+        self.allocator.free(self.reports);
+    }
+};
 
-    var reports = std.mem.tokenizeSequence(u8, file_contents, "\n");
+pub fn parse(allocator: Allocator, in: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    var lines = std.mem.tokenizeScalar(u8, in, '\n');
+    var reports = std.ArrayList([]const u64).init(allocator);
+    defer reports.deinit();
 
-    var sum: u64 = 0;
-    while (reports.next()) |line| {
+    while (lines.next()) |line| {
         var tokens = std.mem.tokenizeScalar(u8, line, ' ');
         var levels = std.ArrayList(u64).init(allocator);
-
-        while (tokens.next()) |token| {
-            const level = try std.fmt.parseInt(u64, token, 10);
-            try levels.append(level);
+        defer levels.deinit();
+        while (tokens.next()) |t| {
+            const n = try std.fmt.parseInt(u64, t, 10);
+            try levels.append(n);
         }
+        try reports.append(try levels.toOwnedSlice());
+    }
 
-        const levels_slice = try levels.toOwnedSlice();
-        defer allocator.free(levels_slice);
-        if (isIncreasingSafely(levels_slice) or isDecreasingSafely(levels_slice)) {
+    ctx.allocator = allocator;
+    ctx.reports = try reports.toOwnedSlice();
+
+    return ctx;
+}
+
+pub fn part1(ctx: Context) ![]const u8 {
+    var sum: u64 = 0;
+    for (ctx.reports) |levels| {
+        if (isIncreasingSafely(levels) or isDecreasingSafely(levels)) {
             sum += 1;
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 pub fn isIncreasingSafely(levels: []const u64) bool {

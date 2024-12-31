@@ -1,15 +1,12 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
+const Context = @import("part1.zig").Context;
 
 const Vec2 = @Vector(2, i64);
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
-
-    var sections = std.mem.tokenizeSequence(u8, file_contents, "\n\n");
-
-    const warehouse = try parseWarehouse(allocator, sections.next().?);
+pub fn part2(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    const warehouse: [][]u8 = try parseWarehouse(allocator, ctx.raw_warehouse);
     defer {
         for (warehouse) |line| {
             allocator.free(line);
@@ -17,22 +14,10 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         allocator.free(warehouse);
     }
 
-    const moves = try parseMoves(allocator, sections.next().?);
-    defer allocator.free(moves);
-
     var pos: Vec2 = try getRobot(warehouse);
 
-    // for (warehouse) |line| {
-    //     std.debug.print("{s}\n", .{line});
-    // }
-    // std.debug.print("\n", .{});
-
-    for (moves) |move| {
+    for (ctx.moves) |move| {
         pos = doMove(warehouse, pos, getDirection(move));
-        // for (warehouse) |line| {
-        //     std.debug.print("{s}\n", .{line});
-        // }
-        // std.debug.print("\n", .{});
     }
 
     var sum: usize = 0;
@@ -44,7 +29,7 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         }
     }
 
-    std.debug.print("{d}\n", .{sum});
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{sum});
 }
 
 fn getRobot(warehouse: [][]u8) !Vec2 {
@@ -76,17 +61,6 @@ fn parseWarehouse(allocator: std.mem.Allocator, input: []const u8) ![][]u8 {
     }
 
     return warehouse.toOwnedSlice();
-}
-
-fn parseMoves(allocator: std.mem.Allocator, input: []const u8) ![]const u8 {
-    var lines = std.mem.tokenizeSequence(u8, input, "\n");
-    var moves = std.ArrayList(u8).init(allocator);
-
-    while (lines.next()) |line| {
-        try moves.appendSlice(line);
-    }
-
-    return moves.toOwnedSlice();
 }
 
 fn doMove(warehouse: [][]u8, pos: Vec2, dir: Vec2) Vec2 {

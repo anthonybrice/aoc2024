@@ -1,19 +1,25 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const util = @import("../main.zig");
 
-pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
-    const file_contents = try util.readFile(allocator, path);
-    defer allocator.free(file_contents);
+const Vec2 = @Vector(2, usize);
 
-    var lines = std.mem.tokenizeScalar(u8, file_contents, '\n');
-    var antenna_map = std.AutoArrayHashMap(
-        u8,
-        std.ArrayList([2]usize),
-    ).init(allocator);
-    defer {
-        for (antenna_map.values()) |list| list.deinit();
-        antenna_map.deinit();
+pub const Context = struct {
+    allocator: Allocator,
+    antenna_map: std.AutoArrayHashMap(u8, std.ArrayList(Vec2)),
+    dims: Vec2,
+
+    pub fn deinit(self: *Context) void {
+        self.antenna_map.deinit();
     }
+};
+
+pub fn parse(allocator: Allocator, input: []const u8) !*Context {
+    var ctx = try allocator.create(Context);
+    ctx.allocator = allocator;
+    ctx.antenna_map = std.AutoArrayHashMap(u8, std.ArrayList(Vec2)).init(allocator);
+
+    var lines = std.mem.tokenizeScalar(u8, input, '\n');
     var row: usize = 0;
     var cols: usize = undefined;
     while (lines.next()) |line| {
@@ -21,23 +27,31 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
         for (line, 0..) |char, col| {
             if (std.ascii.isDigit(char) or std.ascii.isAlphabetic(char)) {
                 var list =
-                    antenna_map.get(char) orelse std.ArrayList([2]usize).init(allocator);
-                try list.append([2]usize{ row, col });
-                try antenna_map.put(char, list);
+                    ctx.antenna_map.get(char) orelse std.ArrayList(Vec2).init(allocator);
+                try list.append(Vec2{ row, col });
+                try ctx.antenna_map.put(char, list);
             }
         }
         row += 1;
     }
-    const rows = row;
 
-    var antinodes = std.AutoArrayHashMap([2]usize, void).init(allocator);
+    ctx.dims = Vec2{ row, cols };
+
+    return ctx;
+}
+
+pub fn part1(ctx: *Context) ![]const u8 {
+    const rows = ctx.dims[0];
+    const cols = ctx.dims[1];
+    var antinodes = std.AutoArrayHashMap(Vec2, void).init(ctx.allocator);
     defer antinodes.deinit();
     for (0..rows) |i| {
         for (0..cols) |j| {
-            for (antenna_map.keys()) |char| {
-                for (antenna_map.get(char).?.items) |this| {
-                    for (antenna_map.get(char).?.items) |other| {
-                        if (std.mem.eql(usize, &this, &other)) continue;
+            for (ctx.antenna_map.keys()) |char| {
+                for (ctx.antenna_map.get(char).?.items) |this| {
+                    for (ctx.antenna_map.get(char).?.items) |other| {
+                        if (std.meta.eql(this, other)) continue;
+
                         const curr_i64 = [2]i64{ @intCast(i), @intCast(j) };
                         const this_i64 = [2]i64{ @intCast(this[0]), @intCast(this[1]) };
                         const other_i64 = [2]i64{ @intCast(other[0]), @intCast(other[1]) };
@@ -58,7 +72,8 @@ pub fn main(allocator: std.mem.Allocator, path: []const u8) !void {
             }
         }
     }
-    std.debug.print("{d}\n", .{antinodes.keys().len});
+
+    return try std.fmt.allocPrint(ctx.allocator, "{d}", .{antinodes.keys().len});
 }
 
 fn areCollinear(p1: [2]i64, p2: [2]i64, p3: [2]i64) bool {

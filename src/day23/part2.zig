@@ -1,31 +1,28 @@
 const std = @import("std");
-const util = @import("../main.zig");
+const Allocator = std.mem.Allocator;
+const Context = @import("part1.zig").Context;
 const graph = @import("graph.zig");
 const tarjan = @import("tarjan.zig");
 
-pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
-    const file_contents = try util.readFile(allocator, filepath);
-    defer allocator.free(file_contents);
-
-    const parse_result = try parse(allocator, file_contents);
-    var g = parse_result.g;
+pub fn part2(ctx: *Context) ![]const u8 {
+    const allocator = ctx.allocator;
+    const r = try mkGraph(allocator, ctx.in);
+    var g = r.g;
     defer g.deinit();
-    var vs = parse_result.vs;
+    var vs = r.vs;
     defer vs.deinit();
 
-    var foo = try bronKerbosch(allocator, g, vs);
+    var cliques = try bronKerbosch(allocator, g, vs);
     defer {
-        for (foo.items) |*v| {
+        for (cliques.items) |*v| {
             v.deinit();
         }
-        foo.deinit();
+        cliques.deinit();
     }
-
-    // std.debug.print("Bron-Kerbosch num: {d}\n", .{foo.items.len});
 
     var len: usize = 0;
     var sg_nodes: std.StringArrayHashMap(void) = undefined;
-    for (foo.items) |v| {
+    for (cliques.items) |v| {
         if (v.count() > len) {
             len = v.count();
             sg_nodes = v;
@@ -40,15 +37,19 @@ pub fn main(allocator: std.mem.Allocator, filepath: []const u8) !void {
     const strings = try strings_list.toOwnedSlice();
     defer allocator.free(strings);
     std.sort.insertion([]const u8, strings, {}, compareStrings);
+    var out = std.ArrayList(u8).init(allocator);
     for (strings) |s| {
-        std.debug.print("{s},", .{s});
+        try out.appendSlice(s);
+        try out.append(',');
     }
-    std.debug.print("\n", .{});
+    _ = out.pop();
+
+    return try out.toOwnedSlice();
 }
 
 const Graph = graph.DirectedGraph([]const u8, std.hash_map.StringContext);
 
-fn parse(allocator: std.mem.Allocator, input: []const u8) !struct { g: Graph, vs: std.StringArrayHashMap(void) } {
+fn mkGraph(allocator: std.mem.Allocator, input: []const u8) !struct { g: Graph, vs: std.StringArrayHashMap(void) } {
     var lines = std.mem.tokenizeScalar(u8, input, '\n');
     var g = Graph.init(allocator);
     var vs = std.StringArrayHashMap(void).init(allocator);

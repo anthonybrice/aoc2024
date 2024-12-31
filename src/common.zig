@@ -34,7 +34,6 @@ pub fn shutdownPool() void {
 }
 
 pub fn downloadFile(allocator: Allocator, url: []const u8, path: []const u8, cookie: ?[]const u8) !void {
-    std.debug.print("Trying to download {s} from {s}\n", .{ path, url });
     var http_client = std.http.Client{ .allocator = allocator };
     defer http_client.deinit();
     var response = std.ArrayList(u8).init(allocator);
@@ -88,10 +87,7 @@ pub fn getInput(allocator: Allocator, day: []const u8) ![]const u8 {
 
 pub fn runDay(work: Worker) !void {
     const gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) std.debug.print("Memory leak detected\n", .{});
-    }
+    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
     const input = try getInput(allocator, work.day);
     const ctx = work.parse(allocator, input);
